@@ -2,6 +2,8 @@
 
 EasyEUICC-aligned eUICC / eSIM manager with a modern Flutter UI.
 
+> **For AI agents / handoff:** read **[AGENTS.md](AGENTS.md)** first (purpose, architecture, done/remaining, license, build).
+
 ## Status
 
 | Area | Done |
