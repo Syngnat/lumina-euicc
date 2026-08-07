@@ -1,0 +1,30 @@
+<resources>
+    <string name="app_name" translatable="false">OpenEUICC</string>
+    <string name="no_euicc_priv">No eSIM found on this device.\nOn some devices, you may need to enable dual SIM first in the menu of this app.</string>
+    <string name="channel_type_telephony_manager">TelephonyManager (Privileged)</string>
+
+    <string name="dsds">Dual SIM</string>
+
+    <string name="toast_dsds_switched">DSDS state switched. Please wait until the modem restarts.</string>
+
+    <string name="footer_mep">Multiple Enabled Profiles (MEP) is supported by this slot. To enable or disable this feature, use the \"Slot Mapping\" tool.</string>
+
+    <string name="slot_mapping">Slot Mapping</string>
+    <string name="slot_mapping_logical_slot">Logical slot %d:</string>
+    <string name="slot_mapping_port">Slot %1$d Port %2$d</string>
+    <string name="slot_mapping_help">Your phone has %1$d logical and %2$d physical SIM slots.%3$s\n\nSelect which physical slot and/or \"port\" you want each logical slot to correspond to. Note that not all mapping modes may be supported by hardware.</string>
+    <string name="slot_mapping_help_mep">\n\nPhysical slot %1$d supports Multiple Enabled Profiles (MEP). To use this feature, assign its %2$d virtual \"ports\" to different logical slots shown above.\n\nWith MEP enabled, the \"ports\" will behave like separate eSIM slots in OpenEUICC, except with a shared profile list.</string>
+    <string name="slot_mapping_help_dsds">\nDual SIM mode is supported but disabled. If your device comes with an internal eSIM chip, it might not be enabled by default. Change mapping above or enable dual SIM to access your eSIM.</string>
+    <string name="slot_mapping_completed">Your new slot mapping has been set. Please wait until modem refreshes the slots.</string>
+    <string name="slot_mapping_failure">The specified mapping might be invalid or unsupported by hardware.</string>
+
+    <string name="lui_title">Connect to mobile network by downloading an eSIM</string>
+    <string name="lui_desc">Your device supports eSIMs. To connect to mobile network, download your eSIM issued by a carrier, or insert a physical SIM.</string>
+    <string name="lui_skip">Skip</string>
+    <string name="lui_download">Download eSIM</string>
+
+    <!-- Preference -->
+    <string name="pref_advanced_telephony_manager_removable">Use TelephonyManager everywhere</string>
+    <string name="pref_advanced_telephony_manager_removable_desc">By default, only OMAPI is attempted for removable eSIMs to match what is done in unprivileged mode (i.e. EasyEUICC). This may not work well on some devices. Select this option to force the use of TelephonyManager even for removable eSIMs.</string>
+    <string name="pref_info_website_url" translatable="false">https://openeuicc.com</string>
+</resources>

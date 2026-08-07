@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    package="im.angry.openeuicc.common">
+
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <application
+        android:enableOnBackInvokedCallback="true"
+        tools:targetApi="tiramisu">
+        <activity
+            android:name="im.angry.openeuicc.ui.SettingsActivity"
+            android:label="@string/pref_settings" />
+
+        <activity
+            android:name="im.angry.openeuicc.ui.NotificationsActivity"
+            android:label="@string/profile_notifications" />
+
+        <activity
+            android:name="im.angry.openeuicc.ui.EuiccInfoActivity"
+            android:label="@string/euicc_info" />
+
+        <activity
+            android:name="im.angry.openeuicc.ui.LogsActivity"
+            android:label="@string/pref_advanced_logs" />
+
+        <activity
+            android:name="im.angry.openeuicc.ui.IsdrAidListActivity"
+            android:label="@string/isdr_aid_list" />
+
+        <activity
+            android:name="im.angry.openeuicc.ui.wizard.DownloadWizardActivity"
+            android:exported="true"
+            android:label="@string/download_wizard" />
+
+        <activity
+            android:name="im.angry.openeuicc.ui.wizard.DeepLinkConfirmationActivity"
+            android:clearTaskOnLaunch="true"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:finishOnTaskLaunch="true"
+            android:label="@string/deep_link_confirmation"
+            android:launchMode="singleInstance"
+            android:theme="@style/Theme.App.DeepLinkTransparent">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <!-- Accepts URIs that begin with "lpa:" -->
+                <!-- for example: "LPA:1$..." -->
+                <!-- refs: https://www.iana.org/assignments/uri-schemes/prov/lpa -->
+                <data android:scheme="lpa" />
+                <data
+                    android:scheme="LPA"
+                    tools:ignore="AppLinkUrlError" />
+                <data android:sspPrefix="1$" />
+            </intent-filter>
+        </activity>
+
+        <activity-alias
+            android:name="im.angry.openeuicc.ui.DirectProfileDownloadActivity"
+            android:exported="true"
+            android:targetActivity="im.angry.openeuicc.ui.wizard.DownloadWizardActivity" />
+
+        <activity
+            android:name="com.journeyapps.barcodescanner.CaptureActivity"
+            android:screenOrientation="fullSensor"
+            tools:replace="screenOrientation" />
+
+        <service
+            android:name="im.angry.openeuicc.service.EuiccChannelManagerService"
+            android:exported="false"
+            android:foregroundServiceType="shortService" />
+    </application>
+</manifest>

@@ -1,61 +1,61 @@
 # Lumina eUICC (Flutter)
 
-EasyEUICC 功能对齐的 **Flutter UI** 版本。
+EasyEUICC-aligned eUICC / eSIM manager with a modern Flutter UI.
 
-- UI：Flutter Material 3（青绿主题、圆角卡片、状态 chip）
-- 能力：通过 Android **Kotlin 薄桥** 调用与 EasyEUICC 同级的 eUICC LPA 操作
-- 许可：业务桥接层可自有；若复用 OpenEUICC/lpac 源码，必须遵守 **GPL-3 only**
+## Status
 
-## 功能对齐表（EasyEUICC unprivileged）
+| Area | Done |
+|---|---|
+| Material 3 UI | ✅ |
+| Profile list / enable / disable / delete / rename | ✅ (real LPA when channel available) |
+| Download via activation code / QR + progress + confirm | ✅ |
+| Compatibility check | ✅ |
+| Notifications list / process / delete | ✅ |
+| Memory reset | ✅ |
+| OpenEUICC `lpac-jni` + `app-common` integrated | ✅ |
+| Mock fallback without hardware | ✅ |
+| Internal eSIM (privileged) | ❌ (same as EasyEUICC) |
 
-| 能力 | EasyEUICC | Flutter 版 | 实现路径 |
-|---|---|---|---|
-| 列出 profile | ✅ | ✅ | `listProfiles` |
-| 启用 / 禁用 | ✅ | ✅ | `switchProfile` |
-| 删除 | ✅ | ✅ | `deleteProfile` |
-| 重命名 | ✅ | ✅ | `renameProfile` |
-| 扫码 / 粘贴下载 | ✅ | ✅ | `downloadProfile` + mobile_scanner |
-| 下载进度 / 确认码 | ✅ | ✅ | EventChannel `taskEvents` |
-| 兼容性检查 | ✅ | ✅ | `runCompatibilityCheck` |
-| USB CCID 读卡器 | ✅ | ✅ | 原生桥枚举通道 |
-| 通知处理 | ✅ | ✅ | `listNotifications` / `processNotification` |
-| 内存重置 | ✅ | ✅ | `memoryReset` |
-| 内置 eSIM | ❌ | ❌ | 与 EasyEUICC 一致，无系统特权不支持 |
-
-## 架构
+## Architecture
 
 ```text
-Flutter UI (Dart)
-   MethodChannel / EventChannel
-Android Kotlin thin bridge
-   → 接入 OpenEUICC app-common / lpac-jni（本机完整集成时）
-   → 或 MockEuiccBridge（无真卡/无原生栈时的开发预览）
+Flutter UI
+  MethodChannel: top.syngnat.lumina.euicc/bridge
+  EventChannel:  top.syngnat.lumina.euicc/task_events
+        ↓
+EuiccBridgePlugin (Kotlin)
+        ↓
+OpenEUICC DefaultEuiccChannelManager + LocalProfileAssistant (lpac-jni)
+        ↓
+OMAPI / USB CCID eUICC
 ```
 
-当前仓库默认使用 **Mock 桥**，保证 UI 与接口可运行、可联调。  
-把 `android/` 里的 `EuiccBridgePlugin` 接到真实 LPA 实现后，即可真机管卡。
+## Quick start (Windows)
 
-## 本机开发
-
-```bash
-# 需要本机 Flutter + Android SDK
-cd lumina_euicc_flutter
+```powershell
+git clone https://github.com/Syngnat/lumina-euicc.git
+cd lumina-euicc
 flutter pub get
 flutter run
 ```
 
-真机调试可写 eUICC：
+If `third_party/OpenEUICC` is missing:
 
-1. 完成 `android/` 与 OpenEUICC `app-common` + `lpac-jni` 的依赖集成  
-2. 将 `EuiccBridgePlugin` 中的 TODO 接到 `EuiccChannelManagerService` 同类 API  
-3. 使用带 ARA-M 的可写卡（9eSIM / ESTKme 等）
+```powershell
+git clone --depth 1 --recurse-submodules https://gitea.angry.im/PeterCxy/OpenEUICC.git third_party/OpenEUICC
+```
 
-## 服务器说明
+## Package
 
-本仓库生成于内存/磁盘紧张的 VPS，**不在服务器上执行完整 Flutter/Android 编译**。  
-请在本机 Android Studio / Flutter 环境构建。
+- App ID: `top.syngnat.lumina.euicc`
+- Display name: Lumina eUICC
 
-## 包名
+## License
 
-- ApplicationId: `top.syngnat.lumina.euicc`
-- 显示名: Lumina eUICC
+- App scaffolding: see repository license / notices
+- Vendored OpenEUICC / lpac: **GNU GPL v3 only** (upstream)
+
+## Docs
+
+- [Feature parity](docs/FEATURE_PARITY.md)
+- [Native integration](docs/NATIVE_INTEGRATION.md)

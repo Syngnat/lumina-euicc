@@ -1,0 +1,91 @@
+name: Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    tags: [v*]
+    paths-ignore:
+      - docs
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - docs
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CFLAGS: "-Werror"
+
+jobs:
+  build:
+    name: Build for ${{ matrix.build.name }}
+    runs-on: ${{ matrix.build.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # prettier-ignore
+        build:
+          - {os: ubuntu-24.04, variant: make, name: Linux, artifact: linux-x64}
+          - {os: ubuntu-24.04-arm, variant: make, name: Linux ARM, artifact: linux-arm}
+          - {os: ubuntu-24.04, variant: make-without-lto, name: Linux (w/o LTO), artifact: linux-x64-without-lto}
+          - {os: ubuntu-24.04-arm, variant: make-without-lto, name: Linux ARM (w/o LTO), artifact: linux-arm-without-lto}
+          - {os: ubuntu-24.04, variant: make-qmi, name: Linux with QMI, artifact: linux-qmi-x64}
+          - {os: ubuntu-24.04-arm, variant: make-qmi, name: Linux ARM with QMI, artifact: linux-qmi-arm}
+          - {os: ubuntu-24.04, variant: mingw, name: Windows with MinGW, artifact: windows-x64}
+          - {os: ubuntu-24.04, variant: woa-mingw, name: Windows on ARM with MinGW, artifact: windows-arm64}
+          - {os: macos-15, variant: make, name: macOS, artifact: macos-universal}
+          - {os: macos-15, variant: make-without-lto, name: macOS (w/o LTO), artifact: macos-universal-without-lto}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup Toolchain
+        run: .github/scripts/setup-debian.sh ${{ matrix.build.variant }}
+        if: runner.os == 'Linux'
+
+      - name: Build for ${{ matrix.build.name }}
+        run: .github/scripts/build-ci.sh ${{ matrix.build.variant }}
+
+      - name: Get short SHA
+        run: echo "SHA7=$(echo ${GITHUB_SHA} | cut -c1-7)" >> $GITHUB_ENV
+
+      - name: Upload ${{ matrix.build.name }} to Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lpac-${{ env.SHA7 }}-${{ matrix.build.artifact }}
+          path: ${{ github.workspace }}/build/*.*
+
+  release:
+    name: Release
+    runs-on: ubuntu-24.04
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    permissions:
+      contents: write
+    steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@v5
+        with:
+          merge-multiple: true
+          pattern: "*"
+      - name: Run SHA1SUM
+        id: checksum
+        run: |
+          echo 'sha1sum<<EOF' >> $GITHUB_OUTPUT
+          sha1sum * >> $GITHUB_OUTPUT
+          echo 'EOF' >> $GITHUB_OUTPUT
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body: |
+            ```plain
+            ${{ steps.checksum.outputs.sha1sum }}
+            ```
+          append_body: true
+          files: "*"

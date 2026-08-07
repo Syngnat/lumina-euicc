@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/show_notifications"
+        android:title="@string/profile_notifications_show"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/euicc_info"
+        android:title="@string/euicc_info"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/euicc_memory_reset"
+        android:title="@string/euicc_memory_reset"
+        app:showAsAction="never" />
+</menu>

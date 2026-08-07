@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <im.angry.openeuicc.ui.preference.LongSummaryPreferenceCategory
+        app:iconSpaceReserved="false"
+        app:summary="@string/pref_notifications_desc"
+        app:title="@string/pref_notifications">
+        <CheckBoxPreference
+            app:iconSpaceReserved="false"
+            app:key="pref_notifications_download"
+            app:summary="@string/pref_notifications_download_desc"
+            app:title="@string/pref_notifications_download" />
+        <CheckBoxPreference
+            app:iconSpaceReserved="false"
+            app:key="pref_notifications_delete"
+            app:summary="@string/pref_notifications_delete_desc"
+            app:title="@string/pref_notifications_delete" />
+        <CheckBoxPreference
+            app:iconSpaceReserved="false"
+            app:key="pref_notifications_switch"
+            app:summary="@string/pref_notifications_switch_desc"
+            app:title="@string/pref_notifications_switch" />
+    </im.angry.openeuicc.ui.preference.LongSummaryPreferenceCategory>
+
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
+        app:key="pref_advanced"
+        app:title="@string/pref_advanced">
+        <CheckBoxPreference
+            app:iconSpaceReserved="false"
+            app:key="pref_advanced_disable_safeguard_removable_esim"
+            app:summary="@string/pref_advanced_disable_safeguard_removable_esim_desc"
+            app:title="@string/pref_advanced_disable_safeguard_removable_esim" />
+
+        <CheckBoxPreference
+            app:iconSpaceReserved="false"
+            app:key="pref_advanced_verbose_logging"
+            app:summary="@string/pref_advanced_verbose_logging_desc"
+            app:title="@string/pref_advanced_verbose_logging" />
+
+        <CheckBoxPreference
+            app:iconSpaceReserved="false"
+            app:key="pref_advanced_force_tpdu_mode"
+            app:summary="@string/pref_advanced_force_tpdu_mode_desc"
+            app:title="@string/pref_advanced_force_tpdu_mode" />
+
+        <EditTextPreference
+            app:dialogMessage="@string/pref_advanced_http_proxy_dialog_message"
+            app:iconSpaceReserved="false"
+            app:key="pref_advanced_http_proxy"
+            app:summary="@string/pref_advanced_http_proxy_desc"
+            app:title="@string/pref_advanced_http_proxy" />
+
+        <Preference
+            app:iconSpaceReserved="false"
+            app:isPreferenceVisible="false"
+            app:key="pref_advanced_language"
+            app:summary="@string/pref_advanced_language_desc"
+            app:title="@string/pref_advanced_language" />
+
+        <Preference
+            app:iconSpaceReserved="false"
+            app:key="pref_advanced_logs"
+            app:summary="@string/pref_advanced_logs_desc"
+            app:title="@string/pref_advanced_logs" />
+
+    </PreferenceCategory>
+
+    <im.angry.openeuicc.ui.preference.LongSummaryPreferenceCategory
+        app:iconSpaceReserved="false"
+        app:key="pref_developer"
+        app:title="@string/pref_developer">
+
+        <CheckBoxPreference
+            app:iconSpaceReserved="false"
+            app:key="pref_developer_refresh_after_switch"
+            app:summary="@string/pref_developer_refresh_after_switch_desc"
+            app:title="@string/pref_developer_refresh_after_switch" />
+
+        <CheckBoxPreference
+            app:iconSpaceReserved="false"
+            app:key="pref_developer_unfiltered_profile_list"
+            app:summary="@string/pref_developer_unfiltered_profile_list_desc"
+            app:title="@string/pref_developer_unfiltered_profile_list" />
+
+        <CheckBoxPreference
+            app:iconSpaceReserved="false"
+            app:key="pref_developer_ignore_tls_certificate"
+            app:summary="@string/pref_developer_ignore_tls_certificate_desc"
+            app:title="@string/pref_developer_ignore_tls_certificate" />
+
+        <ListPreference
+            app:entries="@array/pref_developer_es10x_entry_keys"
+            app:entryValues="@array/pref_developer_es10x_entry_values"
+            app:iconSpaceReserved="false"
+            app:key="pref_developer_es10x_mss"
+            app:summary="@string/pref_developer_es10x_mss_desc"
+            app:title="@string/pref_developer_es10x_mss" />
+
+        <Preference
+            app:iconSpaceReserved="false"
+            app:key="pref_developer_isdr_aid_list"
+            app:summary="@string/pref_developer_isdr_aid_list_desc"
+            app:title="@string/pref_developer_isdr_aid_list" />
+
+    </im.angry.openeuicc.ui.preference.LongSummaryPreferenceCategory>
+
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
+        app:key="pref_info"
+        app:title="@string/pref_info">
+        <Preference
+            app:enableCopying="true"
+            app:iconSpaceReserved="false"
+            app:key="pref_info_app_version"
+            app:title="@string/pref_info_app_version" />
+
+        <Preference
+            app:enableCopying="true"
+            app:iconSpaceReserved="false"
+            app:isPreferenceVisible="false"
+            app:key="pref_info_website"
+            app:title="@string/pref_info_website" />
+
+        <Preference
+            app:enableCopying="true"
+            app:iconSpaceReserved="false"
+            app:key="pref_info_source_code"
+            app:summary="@string/pref_info_source_code_url"
+            app:title="@string/pref_info_source_code">
+            <intent
+                android:action="android.intent.action.VIEW"
+                android:data="@string/pref_info_source_code_url" />
+        </Preference>
+    </PreferenceCategory>
+</PreferenceScreen>

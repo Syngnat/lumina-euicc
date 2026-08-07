@@ -1,0 +1,25 @@
+name: Lint
+
+on: [ push, pull_request ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  reuse:
+    name: REUSE Compliance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: pipx run reuse lint
+
+  clang-format:
+    name: Clang Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: nicelabs/clang-format-action@main
+        with:
+          version: 20
+          warnings-as-errors: true

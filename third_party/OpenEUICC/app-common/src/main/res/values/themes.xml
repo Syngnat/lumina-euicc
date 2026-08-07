@@ -1,0 +1,41 @@
+<resources>
+    <!-- Base application theme. -->
+    <style name="Theme.OpenEUICC" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:windowLightStatusBar">?attr/isLightTheme</item>
+        <item name="alertDialogTheme">@style/AlertDialogTheme</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightNavigationBar">?attr/isLightTheme</item>
+        <item name="toolbarStyle">@style/ToolbarTheme</item>
+        <item name="android:statusBarColor">?attr/colorSurfaceVariant</item>
+        <item name="android:colorBackground">?attr/colorSurface</item>
+        <item name="dialogCornerRadius">28dp</item>
+    </style>
+
+    <style name="ToolbarTheme" parent="Widget.Material3.Toolbar">
+        <item name="android:background">?attr/colorSurfaceVariant</item>
+    </style>
+
+    <style name="AlertDialogTheme" parent="Theme.Material3.DayNight.Dialog.Alert">
+        <item name="buttonBarNegativeButtonStyle">@style/NegativeButtonStyle</item>
+        <item name="buttonBarPositiveButtonStyle">@style/PositiveButtonStyle</item>
+        <item name="dialogCornerRadius">28dp</item>
+    </style>
+
+    <style name="NegativeButtonStyle" parent="Widget.Material3.Button.TextButton.Dialog">
+        <item name="android:textColor">?attr/colorSecondary</item>
+    </style>
+
+    <style name="PositiveButtonStyle" parent="Widget.Material3.Button.TextButton.Dialog">
+        <item name="android:textColor">?attr/colorSecondary</item>
+    </style>
+
+    <style name="Theme.AppCompat.Translucent" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:colorBackgroundCacheHint">@null</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowAnimationStyle">@android:style/Animation</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+    </style>
+
+</resources>

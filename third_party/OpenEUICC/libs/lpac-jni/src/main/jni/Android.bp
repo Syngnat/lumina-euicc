@@ -1,0 +1,45 @@
+cc_defaults {
+    name: "lpac-jni-defaults",
+    local_include_dirs: [
+        "cjson",
+        "lpac",
+        "lpac/cjson-ext",
+    ],
+    sdk_version: "current",
+    cflags: ["-Wno-error"],
+}
+
+cc_library_static {
+    name: "liblpac-cjson",
+    defaults: ["lpac-jni-defaults"],
+    srcs: [
+        "cjson/cjson/*.c",
+        "lpac/cjson-ext/cjson-ext/*.c",
+    ],
+}
+
+cc_library_static {
+    name: "liblpac-euicc",
+    defaults: ["lpac-jni-defaults"],
+    srcs: [
+        "lpac/euicc/*.c",
+    ],
+    static_libs: [
+        "liblpac-cjson",
+    ],
+}
+
+cc_library_shared {
+    name: "liblpac-jni",
+    defaults: ["lpac-jni-defaults"],
+    header_libs: ["jni_headers"],
+    srcs: [
+        "lpac-jni/*.c",
+    ],
+    static_libs: [
+        "liblpac-euicc",
+        "liblpac-cjson",
+    ],
+    shared_libs: ["liblog"],
+    system_ext_specific: true,
+}

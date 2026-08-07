@@ -1,0 +1,3 @@
+# third_party/OpenEUICC is vendored as a shallow clone for LPA.
+# Keep .git so submodule history remains for license attribution.
+third_party/OpenEUICC/**/build/

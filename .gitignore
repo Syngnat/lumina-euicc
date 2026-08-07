@@ -18,6 +18,8 @@ android/**/GeneratedPluginRegistrant.java
 android/key.properties
 *.jks
 *.keystore
+third_party/OpenEUICC/**/build/
+third_party/OpenEUICC/.gradle/
 
 # iOS
 ios/Pods/

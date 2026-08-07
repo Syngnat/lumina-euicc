@@ -1,0 +1,59 @@
+name: Build Debug APKs
+
+on:
+  push:
+    branches:
+      - '*'
+    tags:
+      - '*'
+
+jobs:
+  build-debug:
+    runs-on: [ docker, android-app-certs ]
+    container:
+      volumes:
+        - android-app-keystore:/keystore
+    steps:
+      - name: Repository Checkout
+        uses: https://gitea.angry.im/actions/checkout@v3
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Decode Secret Signing Configuration
+        uses: https://gitea.angry.im/actions/base64-to-file@v1
+        with:
+          fileName: keystore.properties
+          fileDir: ${{ env.GITHUB_WORKSPACE }}
+          encodedString: ${{ secrets.OPENEUICC_SIGNING_CONFIG }}
+
+      - name: Set up JDK 17
+        uses: https://gitea.angry.im/actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: https://gitea.angry.im/actions/setup-android@v3
+
+      - name: Build Debug APKs
+        run: ./gradlew --no-daemon assembleDebug :app:assembleDebugMagiskModuleDir
+
+      - name: Copy Artifacts
+        run: |
+          find . -name 'app*-debug.apk' -exec cp {} . \;
+          cp -r app/build/magisk/debug ./magisk-debug
+
+      - name: Upload APK Artifacts
+        uses: https://gitea.angry.im/actions/upload-artifact@v3
+        with:
+          name: Debug APKs
+          compression-level: 0
+          path: app*-debug.apk
+
+      - name: Upload Magisk Artifacts
+        uses: https://gitea.angry.im/actions/upload-artifact@v3
+        with:
+          name: magisk-debug
+          compression-level: 0
+          path: magisk-debug
