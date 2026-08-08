@@ -52,11 +52,20 @@ of the combined APK is made under GPL-3.0-only for the combined work while all
 applicable notices, source-access rights, and additional permissions of the
 individual components are preserved.
 
-For each CI-built APK, use the project source archive, dependency-source
-archive/manifests, `SOURCE_INFO.txt`, dependency inventories, license materials,
-and `SHA256SUMS` from that same workflow artifact. `SOURCE_INFO.txt` identifies
-the exact Lumina Git commit and commit URL as well as the Flutter framework and
-engine source revisions. The tracked `third_party/OpenEUICC` tree in that
-commit is the exact vendored snapshot used for the build; this repository does
-not currently record a separate upstream OpenEUICC commit identifier, so none
-should be inferred from dates or version strings.
+Each published APK is tied to an immutable version tag. GitHub's automatic
+source archive for that tag contains the exact tracked Lumina sources, build
+scripts, lockfiles, legal notices, and the complete `third_party/OpenEUICC`
+snapshot used by the build. The Release notes link that tag and these legal
+materials directly.
+
+The same trusted CI run also creates and verifies a full audit bundle containing
+the exact project source, hosted Pub sources, available Maven sources and POMs,
+dependency manifests, `SOURCE_INFO.txt`, dependency inventories, license
+materials, and `SHA256SUMS`. The complete bundle is retained as a GitHub Actions
+audit artifact for 90 days. Its non-APK files are also combined into one
+versioned source-materials ZIP on the dedicated `release-materials` branch, and
+the Release notes link it by exact materials commit and state its SHA-256. This
+keeps the corresponding-source and notice set persistently public without
+expanding it into many end-user Release assets. This repository does not record
+a separate upstream OpenEUICC commit identifier, so none should be inferred
+from dates or version strings.

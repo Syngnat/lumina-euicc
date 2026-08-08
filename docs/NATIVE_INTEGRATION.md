@@ -1,6 +1,6 @@
 # Lumina eUICC — OpenEUICC native integration status
 
-This document distinguishes repository/build evidence from real-card validation. Windows debug and dedicated-key release APK builds are recorded below; no ARA-M or USB CCID device evidence is currently recorded.
+This document distinguishes repository/build evidence from real-card validation. Windows debug and dedicated-key release APK builds are recorded below. One exact, model-unknown 9eSIM-card/device combination has limited read-only ARA-M/channel/profile-list evidence; all mutation paths and USB CCID remain unvalidated.
 
 Lumina is an unprivileged application by design. Root, Magisk, Shizuku, system-app installation, and privileged telephony permissions are outside the product boundary. OMAPI access from the phone's SIM slot therefore depends on a card-side ARA-M rule matching Lumina's signing identity; USB CCID does not depend on the phone-slot ARA-M path.
 
@@ -13,7 +13,8 @@ Lumina is an unprivileged application by design. Root, Magisk, Shizuku, system-a
 | MethodChannel API | Profile/download/device operations and notification listing are exposed to Dart; native-only notification process/delete handlers remain |
 | EventChannel download progress | Implemented in code, including confirmation/cancellation flow |
 | OpenEUICC `app-common` + `lpac-jni` as Gradle modules | **Included under `third_party/OpenEUICC`** |
-| `EuiccBridgePlugin` real LPA path | Implemented in code for profile operations, download, notification handlers, memory reset, eUICC info, and compatibility; not device-validated |
+| `EuiccBridgePlugin` real LPA path | Implemented in code for profile operations, download, notification handlers, memory reset, eUICC info, and compatibility; channel/profile listing has one limited field result, while all mutation paths remain device-unvalidated |
+| USB CCID permission / hotplug UX | Transport scan is present, but the Lumina Flutter activity does not yet expose the complete runtime permission request or attach/detach refresh flow; no reader is device-validated |
 | Mock fallback | Debug builds only; release builds return `mode=unavailable` and no invented channel/profile |
 
 ## Intended runtime behaviour
@@ -26,7 +27,37 @@ Lumina is an unprivileged application by design. Root, Magisk, Shizuku, system-a
 
 The read-only compatibility probe reports the running package and signing SHA-1, then attempts each OMAPI phone slot with the configured ISD-R AIDs. It distinguishes ARA-M denial, an unavailable ISD-R, and other sanitized failure types without returning EID, ICCID, or raw exception messages. Opening and closing these logical channels does not mutate the card.
 
-These branches are derived from the current implementation. They are not evidence that a physical card or reader has completed the full lifecycle.
+These branches are derived from the current implementation. The field evidence below covers only the real channel and profile-list branch; it is not evidence that a physical card or reader has completed the full lifecycle.
+
+For USB, `DefaultEuiccChannelManager` can discover a candidate reader before
+permission, but it can open the CCID channel only after Android grants access.
+The upstream permission fragment and attach/detach
+receiver are not part of Lumina's Flutter activity flow, and the current
+manifest attachment filter is not proof that every standard CCID reader will
+receive an automatic grant. A reader may therefore be discovered but remain
+unopenable, or require reconnect/relaunch. This is a known current limitation,
+not verified USB support.
+
+No card model or production batch has completed model-wide real-device sign-off.
+One exact combination has limited read-only evidence, described below.
+Published ARA-M candidates, models requiring card-side configuration, and the
+reasons an EID, retailer, or GSMA certificate cannot establish compatibility
+are recorded in [the card matrix](SUPPORTED_CARDS.md).
+
+## Recorded real-device evidence (2026-08-08)
+
+With the `0.1.1` four-signer Release APK, one seller-described 9eSIM card opened
+ISD-R with the current application identity on OMAPI slot 1. Diagnostics
+reported eUICC port 1/0 and a valid LPA channel, and the home screen listed
+multiple real profiles. The exact 9eSIM model, phone model, and Android version
+were not recorded.
+
+Another card bought from the same retailer was rejected by ARA-M with the same
+Lumina version. This establishes that seller identity does not guarantee equal
+card personalization or effective ARA-M policy; a same-device swap and card
+rule inspection would be required to isolate the exact difference. Neither
+result validates download, enable/disable, rename, delete, memory reset, or USB
+CCID behavior.
 
 ## Pinned build toolchain
 
@@ -79,16 +110,22 @@ This is build/test evidence only. It does not validate OMAPI, ARA-M access, USB 
 
 - `verify` runs for pull requests, `main` pushes, version tags, and manual dispatch. It enforces the lockfile, runs Dart analysis, Flutter and Kotlin tests, builds the debug APK, checks package/min/compile/target SDK metadata and ABIs, then checks both APK ZIP alignment and every 64-bit ELF `LOAD` segment for 16 KB compatibility.
 - `release` runs only after `verify` on a trusted `main` ref or matching `v*` tag allowed by the `release-signing` Environment. The job builds universal plus three ABI-specific APKs with v1/v3 disabled and one stable set of four current signers: Lumina, Sakura, ShiinaSekiu Community, and 9eSIM. It verifies APK Signature Scheme v2, disabled v3 signing, exactly those four certificate fingerprints, exact ABI metadata, unprivileged manifest policy, ZIP alignment, and 64-bit ELF alignment.
-- `publish_release` runs only for a `v<pubspec version name>` tag already contained in `main`. It downloads the verified artifact with `actions: read` and creates the GitHub Release with `contents: write`; it has no signing environment or keystore secrets.
+- `publish_release` runs only for a `v<pubspec version name>` tag already contained in `main`. It downloads and fully verifies the bundle with `actions: read`, excludes the four APKs from one combined source-materials ZIP, appends that ZIP under `v<version-name>/` on the pre-existing `release-materials` branch, and then creates and verifies an immutable GitHub Release with exactly four custom APK assets. Its fixed concurrency group serializes different tag publications. The job has `contents: write`, but no signing environment or keystore secrets.
 
 After verification, a trusted build publishes one Actions artifact containing
 the four signed APKs, `lumina-euicc-source-<full-commit-sha>.zip`,
 `lumina-euicc-dependency-sources-<full-commit-sha>.zip`, `SOURCE_INFO.txt`,
 `SHA256SUMS`, Flutter/Gradle dependency inventories and source manifests, and
-root/nested license materials. A matching version-tag run also exposes every
-top-level file as a GitHub Release asset, including a ZIP of the nested license
-tree. The dependency archive contains complete hosted
-Pub package trees plus available Maven source JARs and cached POMs; the manifest
+root/nested license materials. A matching version-tag run custom-uploads only
+the four APKs as GitHub Release assets. GitHub separately displays its automatic
+`Source code (zip)` and `Source code (tar.gz)` archives for the immutable tag;
+those platform entries cannot be hidden. Release notes link the exact tag tree
+and tag-pinned legal files. The complete build bundle remains available as a
+90-day Actions audit artifact. All non-APK files from that verified bundle are
+also packed into one persistent source-materials ZIP on the
+`release-materials` branch; the Release body identifies it with an exact-commit
+raw URL and its SHA-256. The dependency archive contains complete hosted Pub
+package trees plus available Maven source JARs and cached POMs; the manifest
 marks unavailable Maven sources and records candidate URLs. The source metadata
 records the repository, full commit and commit URL, package/version, build
 toolchain, and exact Flutter framework/engine source revisions. The tracked
@@ -103,7 +140,7 @@ the phone connected, confirm its kernel page size separately:
 adb shell getconf PAGE_SIZE
 ```
 
-`16384` means the device uses 16 KB pages. Regardless of that value, profile discovery and mutations still require a physical-card test and an ARA-M rule matching this app's package/certificate identity.
+`16384` means the device uses 16 KB pages. Regardless of that value, each new card/device combination still requires an ARA-M rule matching this app's package/certificate identity. The single profile-list observation above does not validate mutations or other devices.
 
 The four current ARA-M SHA-1 identities are:
 
@@ -112,9 +149,9 @@ The four current ARA-M SHA-1 identities are:
 - ShiinaSekiu Community: `C4:73:50:C7:BA:68:2B:34:A3:E5:84:A0:D5:84:63:EA:42:B1:AD:73`;
 - 9eSIM: `D1:C0:F4:8B:37:0E:74:D4:EA:47:70:ED:4C:3C:D7:0A:31:98:D3:1F`.
 
-A certificate-only ARA-M rule without a package binding may authorize the APK by matching any one of these current signers. A package-bound rule must also match `top.syngnat.lumina.euicc`; a rule bound to an upstream package can still reject Lumina. EasyEUICC's `2A…` identity is not included because its private key is not public. NekokoLPA's `nekokobeef` and `wenzi` identities are also excluded because their key containers cannot be unlocked from public information. This is a card access-control requirement, not an Android runtime permission that the user can approve. See [community multi-signing policy](COMMUNITY_SIGNING.md) for exact provenance and update constraints.
+A certificate-only ARA-M rule without a package binding may authorize the APK by matching any one of these current signers. A package-bound rule must also match `top.syngnat.lumina.euicc`; a rule bound to another package can still reject Lumina. Fingerprints alone cannot add a signer, so Lumina includes only the private project identity and community identities reproducible from pinned public source. This is a card access-control requirement, not an Android runtime permission that the user can approve. See [community multi-signing policy](COMMUNITY_SIGNING.md) for exact provenance and update constraints.
 
-An installed `0.1.0` single-signer Lumina build is not update-compatible with the four-signer APK and must be uninstalled once. Subsequent releases must preserve the exact four-current-signer set. Neither this policy nor CI verification is real-card evidence.
+An installed `0.1.0` single-signer Lumina build is not update-compatible with the four-signer APK and must be uninstalled once. Subsequent releases must preserve the exact four-current-signer set. Neither this policy nor CI verification extends the limited field result to another card, device, or operation.
 
 ## License
 
@@ -124,10 +161,13 @@ An installed `0.1.0` single-signer Lumina build is not update-compatible with th
 - lpac-jni, lpac components, cJSON, and registry dependencies retain their own
   bundled or upstream licenses; they must not all be described as
   GPL-3.0-only. See `THIRD_PARTY_NOTICES.md` and nested license files.
-- CI distribution keeps all APK variants, exact-commit project source, dependency source
+- CI retains all APK variants, exact-commit project source, dependency source
   archive/manifests, dependency inventories, notices, source metadata, and
-  checksums in one artifact. Redistribution must preserve that
-  corresponding-source and notice set.
+  checksums in one 90-day audit artifact. The same verified non-APK set is kept
+  persistently as one exact-commit-pinned source-materials ZIP. The Release ties
+  its four custom-uploaded APKs to an immutable tag containing the tracked
+  source and legal materials. Redistribution must preserve the tag, persistent
+  materials ZIP, and notice linkage.
 - The three community signing identities retain the pinned NekokoLPA MIT
   attribution recorded in `THIRD_PARTY_NOTICES.md`; signing keys and passwords
   are excluded from project source and release artifacts.
@@ -139,8 +179,8 @@ An installed `0.1.0` single-signer Lumina build is not update-compatible with th
 - Add Dart API and Flutter actions for notification process/delete if parity requires them.
 - Not every OpenEUICC UI-only setting screen is reimplemented in Flutter (developer options, ISD-R AID editor, logs viewer). Core profile/download paths are present and build successfully but still need device evidence.
 - Flutter 3.44.9 warns that Gradle 8.9, AGP 8.7.0, and Kotlin 2.0.21 are nearing the end of its support window; migrate them together only after checking vendored OpenEUICC compatibility.
-- Privileged internal-eSIM path (OpenEUICC system app) is intentionally out of scope — same as EasyEUICC unprivileged.
-- Real-device validation still needs your phone + ARA-M card / USB reader.
+- Privileged internal-eSIM management is intentionally outside Lumina's product boundary.
+- Complete real-device validation still needs exact card/device identification plus download, enable/disable, rename, delete, and USB-reader tests; the current field evidence covers only channel opening and profile listing on one combination.
 - Release signing is wired to the dedicated project key; secure backup and
   recovery of that key remain an owner responsibility. CI now packages the APK
   with matching source and license materials, and future dependency changes

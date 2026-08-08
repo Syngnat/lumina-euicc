@@ -1,4 +1,4 @@
-# EasyEUICC ↔ Lumina Flutter 功能对齐
+# Lumina Flutter 功能覆盖
 
 本表描述当前代码表面，不代表 ARA-M 卡或 USB CCID 读卡器真机验证结果。
 

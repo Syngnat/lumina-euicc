@@ -10,7 +10,7 @@ are the source of truth for exact registry dependency versions.
 
 ## Vendored source
 
-### OpenEUICC / EasyEUICC code
+### OpenEUICC code
 
 - Upstream: <https://gitea.angry.im/PeterCxy/OpenEUICC>
 - Copyright: 2022-2026 OpenEUICC contributors
@@ -86,9 +86,7 @@ application identity.
 - Reviewed source commit:
   [`517f88f9391099c8744a2f04df30c8d4a9cdd3d9`](https://github.com/iebb/NekokoLPA/commit/517f88f9391099c8744a2f04df30c8d4a9cdd3d9)
 - Published comparison release:
-  [v1.12.370](https://github.com/iebb/NekokoLPA/releases/tag/v1.12.370),
-  targeting commit
-  [`ff1f73b3d2e5a16b7f71e2572581cc7039cd4f30`](https://github.com/iebb/NekokoLPA/commit/ff1f73b3d2e5a16b7f71e2572581cc7039cd4f30)
+  [v1.12.370](https://github.com/iebb/NekokoLPA/releases/tag/v1.12.370)
 - Copyright: 2024 Kosmoneko OÜ; 2022 Infineon Technologies AG
 - License: MIT
 - License and notice:
@@ -136,20 +134,20 @@ that are publicly reproducible from the pinned official NekokoLPA source. The
 upstream signing design is recorded in the pinned
 [`multisign/signing.sh`](https://github.com/iebb/NekokoLPA/blob/517f88f9391099c8744a2f04df30c8d4a9cdd3d9/variants/multisign/signing.sh#L8-L14).
 NekokoLPA's `nekokobeef` and `wenzi` identities are not included because their
-unlock credentials exist only as upstream CI secrets. EasyEUICC's `2A…`
-identity is not included because its private key is not publicly available.
+unlock credentials exist only as upstream CI secrets. Lumina includes only the
+four identities whose release policy and provenance are documented above.
 
 The upstream root MIT license grants use, modification, and distribution rights
-subject to preserving its copyright and permission notice; no signing-material
-exclusion was found in the pinned source. This notice preserves that
-attribution. Use of these public community identities does not imply endorsement
-by, or affiliation with, NekokoLPA, Sakura, ShiinaSekiu, or 9eSIM.
+subject to preserving its copyright and permission notice. This notice preserves
+that attribution. Use of these public community identities does not imply
+endorsement by, or affiliation with, NekokoLPA, Sakura, ShiinaSekiu, or 9eSIM.
 
 Only public certificates and signatures are present in an APK. Keystores,
 private keys, and passwords are build-time material and are excluded from the
-Lumina repository, source archives, release artifacts, logs, and the publishing
-job. See `docs/COMMUNITY_SIGNING.md` for fingerprints, ARA-M behavior, and the
-stable-update-set policy.
+Lumina repository, source archives, CI audit bundle, persistent
+source-materials ZIP, GitHub Release assets, logs, and the publishing job. See
+`docs/COMMUNITY_SIGNING.md` for fingerprints, ARA-M behavior, and the stable
+update-set policy.
 
 ## Flutter and Dart packages
 
@@ -157,7 +155,7 @@ The release uses the Flutter SDK and the direct Dart packages declared in
 `pubspec.yaml`, including Cupertino Icons, Riverpod, GoRouter, Google Fonts,
 intl, and collection. Their transitive packages and exact locked versions are
 recorded in `pubspec.lock` and in the Flutter dependency inventory shipped with
-each release artifact.
+the matching CI audit bundle and persistent source-materials ZIP.
 
 These packages retain their upstream licenses. The direct packages in the
 current lockfile use MIT or BSD-style licenses; their full license texts are
@@ -174,7 +172,8 @@ by their respective font authors; they are not relicensed as Lumina code.
 The Android build directly declares AndroidX libraries, Material Components for
 Android, ZXing Android Embedded, and Kotlin coroutines. Gradle also resolves
 their transitive dependencies. Exact coordinates and versions are recorded by
-the Gradle dependency inventory shipped with each release artifact.
+the Gradle dependency inventory shipped with the matching CI audit bundle and
+persistent source-materials ZIP.
 
 Many of these libraries use Apache License 2.0, but not every artifact resolved
 from Google's repository is Apache-licensed. Their source, copyright notices,
@@ -196,7 +195,7 @@ previous proprietary scanner dependency.
 
 ## Source and notices for a released APK
 
-Do not mix files from different workflow runs. The matching release artifact
+Do not mix files from different workflow runs. The matching CI audit bundle
 contains:
 
 - the signed APK;
@@ -214,7 +213,12 @@ contains:
 The Maven source manifest explicitly identifies components whose repositories
 do not publish a resolvable source JAR and records candidate source/POM URLs.
 Flutter framework and engine sources are referenced by exact revision and URL
-rather than duplicated in the artifact.
+rather than duplicated in the bundle. The complete build bundle is retained as
+one Actions audit artifact for 90 days. The same run also combines every non-APK
+file above into one versioned source-materials ZIP on the dedicated
+`release-materials` branch. The Release notes identify that persistent ZIP by
+an exact materials commit URL and SHA-256; only the four APK variants are
+custom-uploaded as GitHub Release assets.
 
 The source archives intentionally exclude signing keys, passwords, local
 machine configuration, build caches, and generated build outputs. None of those

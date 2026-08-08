@@ -169,12 +169,22 @@ cp "${universal_apk}" "${output_dir}/${universal_apk_name}"
 cp "${arm64_apk}" "${output_dir}/${arm64_apk_name}"
 cp "${armeabi_v7a_apk}" "${output_dir}/${armeabi_v7a_apk_name}"
 cp "${x86_64_apk}" "${output_dir}/${x86_64_apk_name}"
-sed "s/@VERSION@/${safe_version}/g" \
+sed \
+  -e "s/@VERSION@/${safe_version}/g" \
+  -e "s/@VERSION_NAME@/${version_name}/g" \
   "${release_notes_template}" > "${output_dir}/RELEASE_NOTES.md"
-if grep -Fq '@VERSION@' "${output_dir}/RELEASE_NOTES.md"; then
-  echo "Release notes still contain an unresolved @VERSION@ placeholder." >&2
+if grep -Eq '@VERSION(_NAME)?@' "${output_dir}/RELEASE_NOTES.md"; then
+  echo "Release notes still contain an unresolved version placeholder." >&2
   exit 1
 fi
+for publication_placeholder in \
+  '@RELEASE_COMMIT@' \
+  '@SOURCE_MATERIALS_SHA256@'; do
+  if ! grep -Fq "${publication_placeholder}" "${output_dir}/RELEASE_NOTES.md"; then
+    echo "Release notes are missing publication placeholder ${publication_placeholder}." >&2
+    exit 1
+  fi
+done
 
 # Start with git-archive semantics, then restore tracked export-ignore paths from
 # the same immutable tree so the corresponding-source ZIP contains every file.
@@ -393,10 +403,10 @@ assert_tree_has_no_signing_material "${output_dir}" "Release bundle"
 
 (
   cd "${output_dir}"
-  LC_ALL=C find . -maxdepth 1 -type f ! -name SHA256SUMS -printf '%P\0' |
+  LC_ALL=C find . -type f ! -path './SHA256SUMS' -printf '%P\0' |
     LC_ALL=C sort -z |
-    xargs -0 -r sha256sum > SHA256SUMS
-  sha256sum --check SHA256SUMS
+    xargs -0 -r sha256sum -- > SHA256SUMS
+  sha256sum --check --strict SHA256SUMS
 )
 
 echo "Release bundle created in ${output_dir}:"

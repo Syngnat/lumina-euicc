@@ -14,7 +14,7 @@ permissions:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/v') }}
 
 jobs:
   verify:
@@ -393,6 +393,10 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
 
+    concurrency:
+      group: release-materials-publish
+      cancel-in-progress: false
+
     permissions:
       actions: read
       contents: write
@@ -406,36 +410,537 @@ jobs:
 
       - name: Verify downloaded release bundle
         shell: bash
+        env:
+          SAFE_VERSION: ${{ needs.release.outputs.safe_version }}
         run: |
           set -euo pipefail
-          test -f dist/release/SHA256SUMS
-          test -f dist/release/RELEASE_NOTES.md
+          required_files=(
+            BUILD_INFO.txt
+            DEPENDENCIES.txt
+            FLUTTER_DEPENDENCIES.txt
+            FLUTTER_VERSION.json
+            GRADLE_RELEASE_DEPENDENCIES.txt
+            GRADLE_SOURCE_ARTIFACTS.tsv
+            LICENSE
+            LICENSES_MANIFEST.txt
+            LICENSES_SCOPE.md
+            NOTICE.md
+            PUB_SOURCE_MANIFEST.tsv
+            RELEASE_NOTES.md
+            SHA256SUMS
+            SOURCE_INFO.txt
+            THIRD_PARTY_NOTICES.md
+            "lumina-euicc-dependency-sources-${GITHUB_SHA}.zip"
+            "lumina-euicc-license-materials-${GITHUB_SHA}.zip"
+            "lumina-euicc-source-${GITHUB_SHA}.zip"
+          )
+          for required_file in "${required_files[@]}"; do
+            test -f "dist/release/${required_file}"
+          done
+          test -d dist/release/licenses
+          test -n "$(find dist/release/licenses -type f -print -quit)"
           grep -Fq "Commit: ${GITHUB_SHA}" dist/release/SOURCE_INFO.txt
           (
             cd dist/release
-            sha256sum --check SHA256SUMS
+            mapfile -t checksummed_files < <(
+              sed -E 's/^[[:xdigit:]]{64} [ *]//' SHA256SUMS |
+                LC_ALL=C sort
+            )
+            mapfile -t actual_files < <(
+              find . -type f ! -path './SHA256SUMS' -printf '%P\n' |
+                LC_ALL=C sort
+            )
+            if ! diff \
+              <(printf '%s\n' "${checksummed_files[@]}") \
+              <(printf '%s\n' "${actual_files[@]}"); then
+              echo "SHA256SUMS must cover every release-bundle file exactly once." >&2
+              exit 1
+            fi
+            sha256sum --check --strict SHA256SUMS
           )
+
+          expected_apks=(
+            "lumina-euicc-${SAFE_VERSION}-arm64-v8a.apk"
+            "lumina-euicc-${SAFE_VERSION}-armeabi-v7a.apk"
+            "lumina-euicc-${SAFE_VERSION}-universal.apk"
+            "lumina-euicc-${SAFE_VERSION}-x86_64.apk"
+          )
+          for apk_name in "${expected_apks[@]}"; do
+            test -f "dist/release/${apk_name}"
+          done
+
+          mapfile -t bundled_apks < <(
+            find dist/release -maxdepth 1 -type f -name '*.apk' \
+              -printf '%f\n' | LC_ALL=C sort
+          )
+          if (( ${#bundled_apks[@]} != ${#expected_apks[@]} )); then
+            echo "Release bundle must contain exactly four APKs." >&2
+            printf '  %s\n' "${bundled_apks[@]}" >&2
+            exit 1
+          fi
+          if ! diff \
+            <(printf '%s\n' "${expected_apks[@]}" | LC_ALL=C sort) \
+            <(printf '%s\n' "${bundled_apks[@]}"); then
+            echo "Release bundle APK set does not match the expected ABI variants." >&2
+            exit 1
+          fi
+
+      - name: Validate GitHub Release publication preconditions
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if gh release view "${RELEASE_TAG}" \
+            --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            release_state="$(
+              gh release view "${RELEASE_TAG}" \
+                --repo "${GITHUB_REPOSITORY}" \
+                --json isDraft,isImmutable \
+                --jq '[.isDraft, .isImmutable] | @tsv'
+            )"
+            read -r is_draft is_immutable <<<"${release_state}"
+            if [[ "${is_draft}" == 'true' ]]; then
+              echo "Removing incomplete draft release ${RELEASE_TAG} before retry."
+              gh release delete "${RELEASE_TAG}" \
+                --repo "${GITHUB_REPOSITORY}" \
+                --yes
+            elif [[ "${is_immutable}" == 'true' ]]; then
+              echo "Immutable release ${RELEASE_TAG} already exists; it will be verified before reuse."
+            else
+              echo "Mutable published release ${RELEASE_TAG} already exists; refusing to replace it." >&2
+              exit 1
+            fi
+          fi
+
+      - name: Build the persistent source-materials archive
+        id: build_source_materials
+        shell: bash
+        env:
+          SAFE_VERSION: ${{ needs.release.outputs.safe_version }}
+        run: |
+          set -euo pipefail
+          materials_name="lumina-euicc-${SAFE_VERSION}-source-materials.zip"
+          materials_path="${RUNNER_TEMP}/${materials_name}"
+          materials_root="lumina-euicc-${SAFE_VERSION}-source-materials"
+
+          python3 - \
+            "dist/release" \
+            "${materials_path}" \
+            "${materials_root}" <<'PY'
+          import pathlib
+          import sys
+          import zipfile
+
+          source = pathlib.Path(sys.argv[1])
+          archive = pathlib.Path(sys.argv[2])
+          archive_root = sys.argv[3]
+          all_paths = sorted(source.rglob("*"))
+          symlinks = [path for path in all_paths if path.is_symlink()]
+          if symlinks:
+              raise SystemExit(f"release bundle contains symlinks: {symlinks}")
+
+          source_files = [path for path in all_paths if path.is_file()]
+          apk_files = [path for path in source_files if path.suffix.lower() == ".apk"]
+          material_files = [path for path in source_files if path not in apk_files]
+          if len(apk_files) != 4:
+              raise SystemExit(f"expected four excluded APKs, found {len(apk_files)}")
+          if not material_files:
+              raise SystemExit("no non-APK release materials were found")
+
+          with zipfile.ZipFile(
+              archive,
+              mode="x",
+              compression=zipfile.ZIP_STORED,
+              allowZip64=True,
+          ) as output:
+              for path in material_files:
+                  relative = path.relative_to(source).as_posix()
+                  output.write(path, f"{archive_root}/{relative}")
+
+          expected = {
+              f"{archive_root}/{path.relative_to(source).as_posix()}"
+              for path in material_files
+          }
+          with zipfile.ZipFile(archive) as packaged:
+              actual = {info.filename for info in packaged.infolist() if not info.is_dir()}
+              if actual != expected:
+                  raise SystemExit("source-materials ZIP does not contain the exact non-APK set")
+              if any(name.lower().endswith(".apk") for name in actual):
+                  raise SystemExit("source-materials ZIP unexpectedly contains an APK")
+              bad = packaged.testzip()
+              if bad is not None:
+                  raise SystemExit(f"source-materials ZIP CRC failure: {bad}")
+          PY
+
+          materials_sha256="$(sha256sum "${materials_path}" | awk '{print $1}')"
+          printf 'materials_name=%s\n' "${materials_name}" >> "${GITHUB_OUTPUT}"
+          printf 'materials_path=%s\n' "${materials_path}" >> "${GITHUB_OUTPUT}"
+          printf 'materials_sha256=%s\n' "${materials_sha256}" >> "${GITHUB_OUTPUT}"
+
+      - name: Check out persistent release materials
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: release-materials
+          path: release-materials-branch
+          fetch-depth: 0
+
+      - name: Publish persistent source materials
+        id: publish_source_materials
+        shell: bash
+        env:
+          MATERIALS_NAME: ${{ steps.build_source_materials.outputs.materials_name }}
+          MATERIALS_PATH: ${{ steps.build_source_materials.outputs.materials_path }}
+          MATERIALS_SHA256: ${{ steps.build_source_materials.outputs.materials_sha256 }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          SAFE_VERSION: ${{ needs.release.outputs.safe_version }}
+          VERSION_NAME: ${{ needs.release.outputs.version_name }}
+        run: |
+          set -euo pipefail
+          materials_repo="release-materials-branch"
+          version_directory="v${VERSION_NAME}"
+          destination="${version_directory}/${MATERIALS_NAME}"
+          materials_root="lumina-euicc-${SAFE_VERSION}-source-materials"
+          effective_materials_sha256="${MATERIALS_SHA256}"
+          reused_materials=false
+
+          if [[ -L "${materials_repo}/${version_directory}" ]]; then
+            echo "Persistent materials path is a symlink for ${RELEASE_TAG}; refusing it." >&2
+            exit 1
+          elif [[ -e "${materials_repo}/${version_directory}" ]]; then
+            if [[ ! -d "${materials_repo}/${version_directory}" || \
+                  ! -f "${materials_repo}/${destination}" || \
+                  -L "${materials_repo}/${destination}" ]]; then
+              echo "Persistent materials layout is invalid for ${RELEASE_TAG}." >&2
+              exit 1
+            fi
+
+            mapfile -d '' existing_entries < <(
+              find "${materials_repo}/${version_directory}" \
+                -mindepth 1 -maxdepth 1 -print0
+            )
+            if (( ${#existing_entries[@]} != 1 )) || \
+              [[ "${existing_entries[0]}" != "${materials_repo}/${destination}" ]]; then
+              echo "Persistent materials directory contains an unexpected file set for ${RELEASE_TAG}." >&2
+              exit 1
+            fi
+
+            python3 - \
+              "${materials_repo}/${destination}" \
+              "${materials_root}" \
+              "${GITHUB_SHA}" \
+              "${VERSION_NAME}" \
+              "${SAFE_VERSION}" <<'PY'
+          import hashlib
+          import io
+          import pathlib
+          import re
+          import stat
+          import sys
+          import zipfile
+
+          archive = pathlib.Path(sys.argv[1])
+          root = sys.argv[2]
+          commit = sys.argv[3]
+          version_name = sys.argv[4]
+          safe_version = sys.argv[5]
+          required = {
+              f"{root}/BUILD_INFO.txt",
+              f"{root}/DEPENDENCIES.txt",
+              f"{root}/FLUTTER_DEPENDENCIES.txt",
+              f"{root}/FLUTTER_VERSION.json",
+              f"{root}/GRADLE_RELEASE_DEPENDENCIES.txt",
+              f"{root}/GRADLE_SOURCE_ARTIFACTS.tsv",
+              f"{root}/LICENSE",
+              f"{root}/LICENSES_MANIFEST.txt",
+              f"{root}/LICENSES_SCOPE.md",
+              f"{root}/NOTICE.md",
+              f"{root}/PUB_SOURCE_MANIFEST.tsv",
+              f"{root}/RELEASE_NOTES.md",
+              f"{root}/SHA256SUMS",
+              f"{root}/SOURCE_INFO.txt",
+              f"{root}/THIRD_PARTY_NOTICES.md",
+              f"{root}/lumina-euicc-source-{commit}.zip",
+              f"{root}/lumina-euicc-dependency-sources-{commit}.zip",
+              f"{root}/lumina-euicc-license-materials-{commit}.zip",
+          }
+          forbidden_name = re.compile(
+              r"(^|/)(key\.properties|[^/]+\.(jks|keystore|p12|pfx|pem)|"
+              r"id_(rsa|dsa|ecdsa|ed25519)|[^/]*private[-_.]?key[^/]*)$",
+              re.IGNORECASE,
+          )
+          private_key = re.compile(
+              rb"-----BEGIN (RSA |EC |DSA |OPENSSH |ENCRYPTED )?PRIVATE KEY-----"
+          )
+
+          def validate_entry(info: zipfile.ZipInfo, expected_root: str) -> None:
+              path = pathlib.PurePosixPath(info.filename)
+              if path.is_absolute() or ".." in path.parts:
+                  raise SystemExit("existing source-materials ZIP has an unsafe path")
+              if not info.filename.startswith(f"{expected_root}/"):
+                  raise SystemExit("existing source-materials ZIP has an unexpected root")
+              mode = info.external_attr >> 16
+              if stat.S_ISLNK(mode):
+                  raise SystemExit("existing source-materials ZIP contains a symlink")
+              if forbidden_name.search(info.filename):
+                  raise SystemExit("existing source-materials ZIP contains a private-key filename")
+
+          with zipfile.ZipFile(archive) as packaged:
+              all_infos = packaged.infolist()
+              all_names = [info.filename for info in all_infos]
+              if len(all_names) != len(set(all_names)):
+                  raise SystemExit("existing source-materials ZIP has duplicate entries")
+              for info in all_infos:
+                  validate_entry(info, root)
+
+              infos = [info for info in all_infos if not info.is_dir()]
+              names = {info.filename for info in infos}
+              if not required.issubset(names):
+                  raise SystemExit("existing source-materials ZIP is missing required files")
+              if any(name.lower().endswith(".apk") for name in names):
+                  raise SystemExit("existing source-materials ZIP contains an APK")
+              if packaged.testzip() is not None:
+                  raise SystemExit("existing source-materials ZIP failed CRC verification")
+
+              relative_files = {name[len(root) + 1:] for name in names}
+              if not any(name.startswith("licenses/") for name in relative_files):
+                  raise SystemExit("existing source-materials ZIP has no nested license files")
+
+              checksum_text = packaged.read(f"{root}/SHA256SUMS").decode("utf-8")
+              checksums = {}
+              for line in checksum_text.splitlines():
+                  match = re.fullmatch(r"([0-9a-f]{64})  (.+)", line)
+                  if match is None or match.group(2) in checksums:
+                      raise SystemExit("existing source-materials checksum manifest is malformed")
+                  checksums[match.group(2)] = match.group(1)
+
+              expected_apks = {
+                  f"lumina-euicc-{safe_version}-arm64-v8a.apk",
+                  f"lumina-euicc-{safe_version}-armeabi-v7a.apk",
+                  f"lumina-euicc-{safe_version}-universal.apk",
+                  f"lumina-euicc-{safe_version}-x86_64.apk",
+              }
+              checksummed_apks = {
+                  name for name in checksums if name.lower().endswith(".apk")
+              }
+              if checksummed_apks != expected_apks:
+                  raise SystemExit("existing source-materials checksum manifest has the wrong APK set")
+
+              material_checksums = {
+                  name: digest
+                  for name, digest in checksums.items()
+                  if not name.lower().endswith(".apk")
+              }
+              expected_materials = relative_files - {"SHA256SUMS"}
+              if set(material_checksums) != expected_materials:
+                  raise SystemExit("existing source-materials ZIP does not match its checksum manifest")
+              for name, digest in material_checksums.items():
+                  data = packaged.read(f"{root}/{name}")
+                  if hashlib.sha256(data).hexdigest() != digest:
+                      raise SystemExit(f"existing source material failed SHA-256: {name}")
+                  if private_key.search(data):
+                      raise SystemExit(f"existing source material contains a private key: {name}")
+
+              for nested_name in (
+                  f"lumina-euicc-source-{commit}.zip",
+                  f"lumina-euicc-dependency-sources-{commit}.zip",
+                  f"lumina-euicc-license-materials-{commit}.zip",
+              ):
+                  with zipfile.ZipFile(io.BytesIO(packaged.read(f"{root}/{nested_name}"))) as nested:
+                      nested_infos = nested.infolist()
+                      nested_names = [info.filename for info in nested_infos]
+                      if len(nested_names) != len(set(nested_names)):
+                          raise SystemExit(f"nested archive has duplicate entries: {nested_name}")
+                      for info in nested_infos:
+                          path = pathlib.PurePosixPath(info.filename)
+                          if path.is_absolute() or ".." in path.parts:
+                              raise SystemExit(f"nested archive has an unsafe path: {nested_name}")
+                          if stat.S_ISLNK(info.external_attr >> 16):
+                              raise SystemExit(f"nested archive contains a symlink: {nested_name}")
+                          if forbidden_name.search(info.filename):
+                              raise SystemExit(f"nested archive contains a private-key filename: {nested_name}")
+                      if nested.testzip() is not None:
+                          raise SystemExit(f"nested archive failed CRC verification: {nested_name}")
+
+              source_info = packaged.read(f"{root}/SOURCE_INFO.txt").decode("utf-8")
+
+          source_lines = source_info.splitlines()
+          if f"Commit: {commit}" not in source_lines:
+              raise SystemExit("existing source-materials ZIP targets another commit")
+          if not any(line.startswith(f"Version: {version_name}+") for line in source_lines):
+              raise SystemExit("existing source-materials ZIP targets another version")
+          PY
+            effective_materials_sha256="$(
+              sha256sum "${materials_repo}/${destination}" | awk '{print $1}'
+            )"
+            reused_materials=true
+          else
+            mkdir "${materials_repo}/${version_directory}"
+            cp "${MATERIALS_PATH}" "${materials_repo}/${destination}"
+            copied_sha256="$(sha256sum "${materials_repo}/${destination}" | awk '{print $1}')"
+            if [[ "${copied_sha256}" != "${MATERIALS_SHA256}" ]]; then
+              echo "Persistent source-materials copy failed SHA-256 verification." >&2
+              exit 1
+            fi
+
+            git -C "${materials_repo}" config user.name 'github-actions[bot]'
+            git -C "${materials_repo}" config \
+              user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git -C "${materials_repo}" add -- "${destination}"
+            git -C "${materials_repo}" diff --cached --check
+            git -C "${materials_repo}" commit \
+              -m "chore(release): publish ${RELEASE_TAG} source materials"
+            git -C "${materials_repo}" push origin \
+              HEAD:refs/heads/release-materials
+          fi
+
+          branch_commit="$(git -C "${materials_repo}" rev-parse HEAD)"
+          mapfile -t materials_commits < <(
+            git -C "${materials_repo}" log --format='%H' -- "${destination}"
+          )
+          if (( ${#materials_commits[@]} != 1 )); then
+            echo "Expected ${destination} to be published exactly once; found ${#materials_commits[@]} history entries." >&2
+            exit 1
+          fi
+          materials_commit="${materials_commits[0]}"
+          remote_commit="$(
+            git -C "${materials_repo}" ls-remote origin \
+              refs/heads/release-materials | awk '{print $1}'
+          )"
+          if [[ "${remote_commit}" != "${branch_commit}" ]]; then
+            echo "Remote release-materials branch does not match the published commit." >&2
+            exit 1
+          fi
+
+          committed_sha256="$(
+            git -C "${materials_repo}" show "${materials_commit}:${destination}" |
+              sha256sum | awk '{print $1}'
+          )"
+          if [[ "${committed_sha256}" != "${effective_materials_sha256}" ]]; then
+            echo "Committed source-materials ZIP failed SHA-256 verification." >&2
+            exit 1
+          fi
+
+          materials_raw_url="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${materials_commit}/${destination}"
+          printf 'materials_commit=%s\n' "${materials_commit}" >> "${GITHUB_OUTPUT}"
+          printf 'materials_raw_url=%s\n' "${materials_raw_url}" >> "${GITHUB_OUTPUT}"
+          printf 'materials_sha256=%s\n' "${effective_materials_sha256}" >> "${GITHUB_OUTPUT}"
+          printf 'reused_materials=%s\n' "${reused_materials}" >> "${GITHUB_OUTPUT}"
+          {
+            echo '### Persistent release materials'
+            echo
+            echo "- Commit: \`${materials_commit}\`"
+            echo "- ZIP SHA-256: \`${effective_materials_sha256}\`"
+            echo "- Reused existing materials: \`${reused_materials}\`"
+            echo "- URL: ${materials_raw_url}"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Render release notes with persistent material identity
+        id: render_release_notes
+        shell: bash
+        env:
+          MATERIALS_COMMIT: ${{ steps.publish_source_materials.outputs.materials_commit }}
+          MATERIALS_SHA256: ${{ steps.publish_source_materials.outputs.materials_sha256 }}
+        run: |
+          set -euo pipefail
+          rendered_notes="${RUNNER_TEMP}/RELEASE_NOTES.md"
+          python3 - \
+            dist/release/RELEASE_NOTES.md \
+            "${rendered_notes}" \
+            "${MATERIALS_COMMIT}" \
+            "${MATERIALS_SHA256}" <<'PY'
+          import pathlib
+          import re
+          import sys
+
+          source = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")
+          rendered = source.replace("@RELEASE_COMMIT@", sys.argv[3])
+          rendered = rendered.replace("@SOURCE_MATERIALS_SHA256@", sys.argv[4])
+          unresolved = sorted(set(re.findall(r"@[A-Z][A-Z0-9_]*@", rendered)))
+          if unresolved:
+              raise SystemExit(f"unresolved release-note placeholders: {unresolved}")
+          pathlib.Path(sys.argv[2]).write_text(rendered, encoding="utf-8")
+          PY
+          printf 'notes_path=%s\n' "${rendered_notes}" >> "${GITHUB_OUTPUT}"
 
       - name: Publish versioned release assets
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_NOTES_PATH: ${{ steps.render_release_notes.outputs.notes_path }}
+          SAFE_VERSION: ${{ needs.release.outputs.safe_version }}
           VERSION_NAME: ${{ needs.release.outputs.version_name }}
         run: |
           set -euo pipefail
+          release_assets=(
+            "dist/release/lumina-euicc-${SAFE_VERSION}-arm64-v8a.apk"
+            "dist/release/lumina-euicc-${SAFE_VERSION}-armeabi-v7a.apk"
+            "dist/release/lumina-euicc-${SAFE_VERSION}-universal.apk"
+            "dist/release/lumina-euicc-${SAFE_VERSION}-x86_64.apk"
+          )
+          for release_asset in "${release_assets[@]}"; do
+            test -f "${release_asset}"
+          done
+
+          verify_published_release() {
+            local release_json="${RUNNER_TEMP}/release-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.json"
+            gh api \
+              -H 'Accept: application/vnd.github+json' \
+              "repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" \
+              > "${release_json}"
+            python3 - \
+              "${release_json}" \
+              "${RELEASE_NOTES_PATH}" \
+              "${RELEASE_TAG}" \
+              "${VERSION_NAME}" \
+              "${release_assets[@]}" <<'PY'
+          import hashlib
+          import json
+          import pathlib
+          import sys
+
+          release = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+          notes = pathlib.Path(sys.argv[2]).read_text(encoding="utf-8").rstrip()
+          tag = sys.argv[3]
+          version_name = sys.argv[4]
+          local_assets = [pathlib.Path(value) for value in sys.argv[5:]]
+
+          if release.get("tag_name") != tag:
+              raise SystemExit("published Release tag does not match")
+          if release.get("name") != f"Lumina eUICC {version_name}":
+              raise SystemExit("published Release title does not match")
+          if release.get("draft") or release.get("prerelease"):
+              raise SystemExit("published Release is still a draft or prerelease")
+          if release.get("immutable") is not True:
+              raise SystemExit("published Release is not immutable")
+          if (release.get("body") or "").rstrip() != notes:
+              raise SystemExit("published Release notes do not match the verified bundle")
+
+          remote_assets = {asset["name"]: asset for asset in release.get("assets", [])}
+          expected_names = {path.name for path in local_assets}
+          if set(remote_assets) != expected_names or len(expected_names) != 4:
+              raise SystemExit("published Release does not contain exactly four expected APKs")
+          for path in local_assets:
+              digest = f"sha256:{hashlib.sha256(path.read_bytes()).hexdigest()}"
+              asset = remote_assets[path.name]
+              if asset.get("digest") != digest:
+                  raise SystemExit(f"published Release digest mismatch: {path.name}")
+              if asset.get("size") != path.stat().st_size:
+                  raise SystemExit(f"published Release size mismatch: {path.name}")
+              if asset.get("state") != "uploaded":
+                  raise SystemExit(f"published Release asset is not uploaded: {path.name}")
+          PY
+          }
+
           if gh release view "${RELEASE_TAG}" \
             --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
-            echo "Release ${RELEASE_TAG} already exists; refusing to replace its assets." >&2
-            exit 1
-          fi
-
-          mapfile -d '' release_assets < <(
-            find dist/release -maxdepth 1 -type f \
-              -print0 | LC_ALL=C sort -z
-          )
-          if (( ${#release_assets[@]} == 0 )); then
-            echo "No release assets were found." >&2
+            if verify_published_release; then
+              echo "Existing immutable release ${RELEASE_TAG} exactly matches; reusing it."
+              exit 0
+            fi
+            echo "Existing release ${RELEASE_TAG} does not match the verified publication." >&2
             exit 1
           fi
 
@@ -445,4 +950,45 @@ jobs:
             --verify-tag \
             --latest \
             --title "Lumina eUICC ${VERSION_NAME}" \
-            --notes-file dist/release/RELEASE_NOTES.md
+            --notes-file "${RELEASE_NOTES_PATH}"
+
+          verified=false
+          for attempt in 1 2 3 4 5; do
+            if verify_published_release; then
+              verified=true
+              break
+            fi
+            echo "Release verification attempt ${attempt} failed; retrying." >&2
+            sleep 2
+          done
+          if [[ "${verified}" == 'true' ]]; then
+            exit 0
+          fi
+
+          immutable='unknown'
+          if release_state="$(
+            gh release view "${RELEASE_TAG}" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --json isImmutable \
+              --jq '.isImmutable'
+          )"; then
+            immutable="${release_state}"
+          fi
+          if [[ "${immutable}" == 'false' ]]; then
+            if ! gh release delete "${RELEASE_TAG}" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --yes; then
+              echo "Release verification and mutable-release cleanup both failed." >&2
+              exit 1
+            fi
+            if gh release view "${RELEASE_TAG}" \
+              --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+              echo "Mutable Release cleanup reported success but the Release still exists." >&2
+              exit 1
+            fi
+            echo "Release was not immutable; the mutable publication was removed." >&2
+            exit 1
+          fi
+
+          echo "Could not verify ${RELEASE_TAG}; it was left untouched for a safe idempotent retry." >&2
+          exit 1

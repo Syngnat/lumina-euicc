@@ -45,15 +45,51 @@ certificates can authorize the APK. If the rule also binds a package name, that
 package must be `top.syngnat.lumina.euicc`; a rule bound to another package can
 still deny access even when its certificate fingerprint matches.
 
-The EasyEUICC signing identity whose SHA-1 begins with `2A` is not included:
-its private key is not publicly available. The NekokoLPA `nekokobeef` and
-`wenzi` key containers are also excluded because their unlock credentials are
-provided only through upstream CI secrets, so those signers are not publicly
-reproducible.
+Lumina includes only the private project identity and community identities that
+can be reproduced from pinned public source. A certificate fingerprint by
+itself is not usable for APK signing; identities whose key material or unlock
+process is not publicly reproducible are intentionally excluded.
 
-This describes Android and card access-control identity; it is not evidence of
-a successful operation on a physical card. OPPO/ColorOS OMAPI behavior and the
-actual ARA-M rules on each removable eUICC still require device validation.
+This describes Android and card access-control identity; it does not guarantee
+success on a physical card. The limited field evidence below confirms one exact
+combination only. OMAPI behavior and the actual ARA-M rules on every other
+removable eUICC still require device validation.
+
+## Card compatibility implications
+
+One seller-described 9eSIM card/device combination has completed read-only
+channel and profile-list validation with the `0.1.1` four-signer APK. Its exact
+card model, phone model, and Android version were not recorded. Another card
+bought from the same retailer was rejected by ARA-M with the same Lumina
+version. This mixed result confirms that a retailer or family label is not a
+substitute for the exact card's effective rules. Based on this evidence and the
+certificate hashes in the pinned
+[NekokoLPA/Vendors database](https://github.com/NekokoLPA/Vendors/tree/9b73f52b5cf52d41399d6293f7b4fce6b74ce4e2/cards):
+
+- [9eSIM v3, V2S, and v0](https://github.com/NekokoLPA/Vendors/blob/9b73f52b5cf52d41399d6293f7b4fce6b74ce4e2/cards/9esim.yaml),
+  [eSIM.gg Card](https://github.com/NekokoLPA/Vendors/blob/9b73f52b5cf52d41399d6293f7b4fce6b74ce4e2/cards/esimgg.yaml),
+  and [蚊子玩卡 S3](https://github.com/NekokoLPA/Vendors/blob/9b73f52b5cf52d41399d6293f7b4fce6b74ce4e2/cards/%E8%9A%8A%E5%AD%90%E7%8E%A9%E5%8D%A1.yaml)
+  remain signer-fingerprint-match candidates because their entries list the
+  included 9eSIM signer; the model-unknown successful observation does not
+  certify any one of these families or batches;
+- [ESTKme Light, Plus, and Max](https://github.com/NekokoLPA/Vendors/blob/9b73f52b5cf52d41399d6293f7b4fce6b74ce4e2/cards/estkme.yaml)
+  do not list a current Lumina signer by default, but their signer list is
+  marked changeable; they are candidates only after card-side configuration;
+- a generic or unbranded card is unknown. EID prefix, chip manufacturer, STK
+  menus, and "GSMA certified" wording do not disclose its effective ARA-M
+  certificate and package policy.
+
+These database entries record expected certificate hashes, not proof that
+every shipped batch has identical personalization or no package-name binding.
+The same-retailer pass/fail observations reinforce that limitation. Download,
+enable/disable, rename, delete, and other mutations were not tested on the
+successful card. See [the full card matrix](SUPPORTED_CARDS.md) before
+describing any model as supported.
+
+USB CCID is a separate Android USB-host transport and does not use the
+phone-slot ARA-M rule. That does not make it currently verified: Lumina still
+lacks a completed reader sign-off and the Flutter activity does not yet expose
+the complete runtime permission and hotplug refresh flow.
 
 ## Upstream provenance and license
 
@@ -67,11 +103,9 @@ identities were reviewed at official NekokoLPA commit
 - [MIT license and copyright notice](https://github.com/iebb/NekokoLPA/blob/517f88f9391099c8744a2f04df30c8d4a9cdd3d9/LICENSE#L1-L12).
 
 The published comparison artifact is the official
-[NekokoLPA v1.12.370 multisign release](https://github.com/iebb/NekokoLPA/releases/tag/v1.12.370),
-whose tag targets commit
-[`ff1f73b3d2e5a16b7f71e2572581cc7039cd4f30`](https://github.com/iebb/NekokoLPA/commit/ff1f73b3d2e5a16b7f71e2572581cc7039cd4f30).
-The relevant upstream signing script is identical at the reviewed default-branch
-commit and that release commit.
+[NekokoLPA v1.12.370 multisign release](https://github.com/iebb/NekokoLPA/releases/tag/v1.12.370).
+The relevant upstream signing script is identical at the reviewed source commit
+and the published release tag.
 
 NekokoLPA's root MIT license grants broad use, modification, and distribution
 rights subject to preservation of its copyright and permission notice. Lumina
