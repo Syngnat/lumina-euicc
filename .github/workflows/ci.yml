@@ -131,7 +131,6 @@ jobs:
     environment: release-signing
 
     outputs:
-      artifact_name: ${{ steps.release_bundle.outputs.artifact_name }}
       safe_version: ${{ steps.release_bundle.outputs.safe_version }}
       version_name: ${{ steps.release_bundle.outputs.version_name }}
 
@@ -379,7 +378,7 @@ jobs:
       - name: Upload signed APK and corresponding source
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: ${{ steps.release_bundle.outputs.artifact_name }}
+          name: lumina-euicc-release-bundle
           path: dist/release/
           if-no-files-found: error
           compression-level: 0
@@ -402,7 +401,7 @@ jobs:
       - name: Download the verified release bundle
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
         with:
-          name: ${{ needs.release.outputs.artifact_name }}
+          name: lumina-euicc-release-bundle
           path: dist/release
 
       - name: Verify downloaded release bundle

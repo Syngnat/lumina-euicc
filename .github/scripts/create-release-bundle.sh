@@ -128,7 +128,6 @@ if [[ -z "${version}" ]]; then
   exit 1
 fi
 
-short_commit="${commit:0:12}"
 safe_version="${version//+/-}"
 version_name="${version%%+*}"
 source_prefix="lumina-euicc-${commit}"
@@ -404,8 +403,6 @@ echo "Release bundle created in ${output_dir}:"
 find "${output_dir}" -maxdepth 1 -type f -printf '  %f\n' | LC_ALL=C sort
 
 if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
-  printf 'artifact_name=lumina-euicc-%s-signed-%s\n' \
-    "${safe_version}" "${short_commit}" >> "${GITHUB_OUTPUT}"
   printf 'safe_version=%s\n' "${safe_version}" >> "${GITHUB_OUTPUT}"
   printf 'version_name=%s\n' "${version_name}" >> "${GITHUB_OUTPUT}"
 fi
