@@ -39,6 +39,10 @@
   "disabled": "已停用",
   "provider": "运营商",
   "profileRegionUnitedKingdom": "英国",
+  "profileRegionIssuerCountry": "发卡地区 {countryCode}",
+  "@profileRegionIssuerCountry": {
+    "placeholders": {"countryCode": {"type": "String"}}
+  },
   "profileRegionGlobal": "全球",
   "profileRegionUnknown": "地区未知",
   "iccidCopied": "已复制 ICCID",

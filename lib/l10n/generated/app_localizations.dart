@@ -332,6 +332,12 @@ abstract class AppLocalizations {
   /// **'United Kingdom'**
   String get profileRegionUnitedKingdom;
 
+  /// No description provided for @profileRegionIssuerCountry.
+  ///
+  /// In en, this message translates to:
+  /// **'Issuer region {countryCode}'**
+  String profileRegionIssuerCountry(String countryCode);
+
   /// No description provided for @profileRegionGlobal.
   ///
   /// In en, this message translates to:

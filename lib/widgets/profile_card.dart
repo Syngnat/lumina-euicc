@@ -27,21 +27,30 @@ class ProfileCard extends StatelessWidget {
     final presentation = ProfilePresentation.infer(
       name: profile.name,
       provider: profile.provider,
+      iccid: profile.iccid,
     );
     final regionLabel = switch (presentation.region) {
+      ProfileRegion.unitedKingdom when presentation.inferredFromIccid =>
+        context.l10n.profileRegionIssuerCountry(
+          presentation.countryCode ?? 'GB',
+        ),
       ProfileRegion.unitedKingdom => context.l10n.profileRegionUnitedKingdom,
+      ProfileRegion.issuerCountry => context.l10n.profileRegionIssuerCountry(
+          presentation.countryCode ?? '—',
+        ),
       ProfileRegion.global => context.l10n.profileRegionGlobal,
       ProfileRegion.unknown => context.l10n.profileRegionUnknown,
     };
 
     return Card(
       elevation: 0,
+      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       clipBehavior: Clip.antiAlias,
       color: profile.enabled
           ? scheme.primaryContainer.withValues(alpha: 0.22)
           : scheme.surfaceContainerLow,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(18),
         side: BorderSide(
           color: profile.enabled
               ? scheme.primary.withValues(alpha: 0.48)
@@ -50,7 +59,7 @@ class ProfileCard extends StatelessWidget {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 15, 12, 14),
+        padding: const EdgeInsets.fromLTRB(10, 8, 6, 8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -62,42 +71,67 @@ class ProfileCard extends StatelessWidget {
                   semanticLabel: regionLabel,
                   enabled: profile.enabled,
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 8),
                 Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 1),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          profile.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style:
-                              Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: -0.2,
-                                  ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          profile.provider.trim().isEmpty
-                              ? '—'
-                              : profile.provider,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style:
-                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        profile.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: -0.2,
+                                ),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Expanded(
+                            flex: 2,
+                            child: Text(
+                              profile.provider.trim().isEmpty
+                                  ? '—'
+                                  : profile.provider,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelMedium
+                                  ?.copyWith(
                                     color: scheme.onSurfaceVariant,
                                     fontWeight: FontWeight.w500,
                                   ),
-                        ),
-                      ],
-                    ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          _StatusLabel(enabled: profile.enabled),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              regionLabel,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(
+                                    color: scheme.onSurfaceVariant,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
                 PopupMenuButton<String>(
                   padding: EdgeInsets.zero,
+                  iconSize: 21,
+                  position: PopupMenuPosition.under,
                   onSelected: (value) {
                     switch (value) {
                       case 'enable':
@@ -133,19 +167,8 @@ class ProfileCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 13),
-            Wrap(
-              spacing: 8,
-              runSpacing: 7,
-              children: [
-                _StatusPill(enabled: profile.enabled),
-                _RegionPill(
-                  label: regionLabel,
-                ),
-              ],
-            ),
-            const SizedBox(height: 13),
-            _ProfileDetails(
+            const SizedBox(height: 6),
+            _ProfileFooter(
               profile: profile,
               onCopyIccid: () => _copyIccid(context),
             ),
@@ -182,8 +205,8 @@ class _RegionBadge extends StatelessWidget {
 
     return SizedBox(
       key: const ValueKey('profile-region-badge'),
-      width: 44,
-      height: 44,
+      width: 34,
+      height: 34,
       child: DecoratedBox(
         decoration: BoxDecoration(
           shape: BoxShape.circle,
@@ -201,7 +224,7 @@ class _RegionBadge extends StatelessWidget {
           image: true,
           child: ExcludeSemantics(
             child: Center(
-              child: Text(symbol, style: const TextStyle(fontSize: 23)),
+              child: Text(symbol, style: const TextStyle(fontSize: 19)),
             ),
           ),
         ),
@@ -210,8 +233,8 @@ class _RegionBadge extends StatelessWidget {
   }
 }
 
-class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.enabled});
+class _StatusLabel extends StatelessWidget {
+  const _StatusLabel({required this.enabled});
 
   final bool enabled;
 
@@ -219,70 +242,34 @@ class _StatusPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
-    return Container(
+    return Row(
       key: const ValueKey('profile-status'),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color:
-            enabled ? scheme.primaryContainer : scheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 6,
-            height: 6,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: enabled ? scheme.primary : scheme.onSurfaceVariant,
-            ),
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 5,
+          height: 5,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: enabled ? scheme.primary : scheme.onSurfaceVariant,
           ),
-          const SizedBox(width: 6),
-          Text(
-            enabled ? context.l10n.enabled : context.l10n.disabled,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: enabled
-                      ? scheme.onPrimaryContainer
-                      : scheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w700,
-                ),
-          ),
-        ],
-      ),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          enabled ? context.l10n.enabled : context.l10n.disabled,
+          maxLines: 1,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: enabled ? scheme.primary : scheme.onSurfaceVariant,
+                fontWeight: FontWeight.w700,
+              ),
+        ),
+      ],
     );
   }
 }
 
-class _RegionPill extends StatelessWidget {
-  const _RegionPill({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: scheme.outlineVariant),
-        color: scheme.surface.withValues(alpha: 0.72),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: scheme.onSurfaceVariant,
-              fontWeight: FontWeight.w600,
-            ),
-      ),
-    );
-  }
-}
-
-class _ProfileDetails extends StatelessWidget {
-  const _ProfileDetails({
+class _ProfileFooter extends StatelessWidget {
+  const _ProfileFooter({
     required this.profile,
     required this.onCopyIccid,
   });
@@ -294,29 +281,19 @@ class _ProfileDetails extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 9),
-      decoration: BoxDecoration(
-        color: scheme.surface.withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: scheme.outlineVariant.withValues(alpha: 0.62),
+    return Row(
+      children: [
+        Text(
+          'ICCID',
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.4,
+              ),
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'ICCID',
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.6,
-                ),
-          ),
-          const SizedBox(height: 3),
-          Semantics(
+        const SizedBox(width: 6),
+        Expanded(
+          child: Semantics(
             key: const ValueKey('profile-iccid'),
             label: 'ICCID ${profile.iccid}',
             hint: context.l10n.iccidCopyHint,
@@ -332,33 +309,35 @@ class _ProfileDetails extends StatelessWidget {
                     profile.iccid,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           fontFamily: 'monospace',
-                          fontSize: 12.5,
+                          fontSize: 11.5,
                           fontWeight: FontWeight.w600,
-                          letterSpacing: 0.15,
+                          letterSpacing: 0.1,
                         ),
                   ),
                 ),
               ),
             ),
           ),
-          const SizedBox(height: 8),
-          Divider(
-              height: 1, color: scheme.outlineVariant.withValues(alpha: 0.7)),
-          const SizedBox(height: 8),
-          Text(
+        ),
+        const SizedBox(width: 8),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 82),
+          child: Text(
             context.l10n.profileSummary(
               profile.seq,
               context.l10n.profileClass(profile.profileClass),
             ),
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   color: scheme.onSurfaceVariant,
                   fontWeight: FontWeight.w600,
                 ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

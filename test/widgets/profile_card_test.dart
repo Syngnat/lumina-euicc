@@ -16,6 +16,7 @@ void main() {
         const ProfilePresentation(
           region: ProfileRegion.unitedKingdom,
           symbol: '🇬🇧',
+          countryCode: 'GB',
         ),
       );
     });
@@ -35,11 +36,50 @@ void main() {
       );
     });
 
-    test('does not infer a country from ICCID-like digits', () {
+    test('falls back to the E.118 ICCID issuer country code', () {
       expect(
         ProfilePresentation.infer(
-          name: '8944100000000000001',
-          provider: '',
+          name: 'Personal line',
+          provider: 'Carrier X',
+          iccid: '8944100000000000001',
+        ),
+        const ProfilePresentation(
+          region: ProfileRegion.unitedKingdom,
+          symbol: '🇬🇧',
+          countryCode: 'GB',
+          inferredFromIccid: true,
+        ),
+      );
+    });
+
+    test('maps an explicit CTExcel identity to the United Kingdom', () {
+      expect(
+        ProfilePresentation.infer(
+          name: 'CTExcel UK',
+          provider: 'China Telecom Global',
+        ),
+        const ProfilePresentation(
+          region: ProfileRegion.unitedKingdom,
+          symbol: '🇬🇧',
+          countryCode: 'GB',
+        ),
+      );
+    });
+
+    test('keeps malformed and shared-code ICCIDs unknown', () {
+      expect(
+        ProfilePresentation.infer(
+          name: 'Personal line',
+          provider: 'Carrier X',
+          iccid: 'not-an-iccid',
+        ).region,
+        ProfileRegion.unknown,
+      );
+      expect(
+        ProfilePresentation.infer(
+          name: 'Personal line',
+          provider: 'Carrier X',
+          iccid: '8911234567890123456',
         ).region,
         ProfileRegion.unknown,
       );
@@ -63,8 +103,8 @@ void main() {
     final badge = tester.widget<SizedBox>(
       find.byKey(const ValueKey('profile-region-badge')),
     );
-    expect(badge.width, 44);
-    expect(badge.height, 44);
+    expect(badge.width, 34);
+    expect(badge.height, 34);
     expect(find.text('🇬🇧'), findsOneWidget);
     expect(find.text('英国'), findsOneWidget);
     expect(find.text('giffgaff UK'), findsOneWidget);
@@ -95,6 +135,26 @@ void main() {
     expect(find.text('Disabled'), findsOneWidget);
   });
 
+  testWidgets('shows an ICCID issuer-country fallback when metadata is vague',
+      (tester) async {
+    await _pumpCard(
+      tester,
+      profile: const EuiccProfile(
+        iccid: '8986100000000000001',
+        name: 'Personal line',
+        provider: 'Carrier X',
+        enabled: false,
+        profileClass: 'operational',
+        seq: 2,
+      ),
+      locale: const Locale('zh'),
+    );
+
+    expect(find.text('🇨🇳'), findsOneWidget);
+    expect(find.text('发卡地区 CN'), findsOneWidget);
+    expect(find.text('地区未知'), findsNothing);
+  });
+
   testWidgets('stays overflow-free at a 1.3 text scale', (tester) async {
     await _pumpCard(
       tester,
@@ -112,6 +172,26 @@ void main() {
 
     expect(find.byType(ProfileCard), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('keeps a standard profile card compact enough for dense lists',
+      (tester) async {
+    await _pumpCard(
+      tester,
+      profile: const EuiccProfile(
+        iccid: '8944101234567890123',
+        name: 'Compact profile',
+        provider: 'Carrier',
+        enabled: true,
+        profileClass: 'operational',
+        seq: 4,
+      ),
+    );
+
+    expect(
+      tester.getSize(find.byType(ProfileCard)).height,
+      lessThanOrEqualTo(96),
+    );
   });
 
   testWidgets('preserves actions and long-press ICCID copy', (tester) async {

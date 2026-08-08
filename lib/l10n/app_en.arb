@@ -51,6 +51,10 @@
   "disabled": "Disabled",
   "provider": "Provider",
   "profileRegionUnitedKingdom": "United Kingdom",
+  "profileRegionIssuerCountry": "Issuer region {countryCode}",
+  "@profileRegionIssuerCountry": {
+    "placeholders": {"countryCode": {"type": "String"}}
+  },
   "profileRegionGlobal": "Global",
   "profileRegionUnknown": "Region unknown",
   "iccidCopied": "ICCID copied",

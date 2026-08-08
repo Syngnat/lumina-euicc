@@ -139,6 +139,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileRegionUnitedKingdom => 'United Kingdom';
 
   @override
+  String profileRegionIssuerCountry(String countryCode) {
+    return 'Issuer region $countryCode';
+  }
+
+  @override
   String get profileRegionGlobal => 'Global';
 
   @override

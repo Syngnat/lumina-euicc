@@ -134,6 +134,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get profileRegionUnitedKingdom => '英国';
 
   @override
+  String profileRegionIssuerCountry(String countryCode) {
+    return '发卡地区 $countryCode';
+  }
+
+  @override
   String get profileRegionGlobal => '全球';
 
   @override

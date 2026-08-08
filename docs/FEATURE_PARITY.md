@@ -12,6 +12,8 @@
 | `deleteProfile` | `slotId,portId,seId,iccid` | `{ok:true}` |
 | `renameProfile` | `slotId,portId,seId,iccid,name` | `{ok:true}` |
 
+Profile 卡片为紧凑两行展示。国旗优先来自明确的运营商/品牌身份；元数据不足时，只对无歧义的 ITU E.118 ICCID 国家码显示“发卡地区”。它不代表实际服务国家或漫游范围，共享/全球/无效码保持未知。
+
 ## 下载
 
 | API | 说明 |

@@ -25,6 +25,13 @@ Lumina is intentionally an ordinary, non-root Android app. It does not require o
 | Mock fallback without hardware | Debug builds only; release builds show the real channel as unavailable instead of inventing profiles |
 | Internal eSIM (privileged) | Out of scope |
 
+Profile cards use a compact two-line layout. Country flags prefer explicit
+provider identities; when metadata is incomplete, Lumina may derive an
+**issuer region** from an unambiguous ITU E.118 ICCID country code. This is the
+identifier issuer's registration region, not a statement about network
+coverage or roaming. Shared/global/invalid codes remain visibly unknown rather
+than being guessed.
+
 ## Removable-card compatibility
 
 Lumina has one limited real-device result: the `0.1.1` four-signer Release APK
