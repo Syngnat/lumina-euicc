@@ -473,4 +473,84 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get compatibilityRootlessAraMRequired =>
       '无需也不会使用 Root。对于插在手机里的卡，其访问控制规则必须匹配 Lumina 至少一个当前签名证书；如果规则还绑定 Android 包名，则必须同时匹配 Lumina 包名。USB CCID 使用独立的权限流程。';
+
+  @override
+  String get softwareUpdate => '软件更新';
+
+  @override
+  String get softwareUpdateDescription => '从 GitHub Releases 检查签名更新';
+
+  @override
+  String get updateSourceDescription => '更新仅来自 Lumina 官方且不可变的 GitHub Release。';
+
+  @override
+  String get updateSecurityDescription =>
+      '下载完成后会核对 GitHub 公布的 SHA-256；Android 还会检查包名及完整签名证书集合是否与当前应用一致。';
+
+  @override
+  String currentVersionLabel(String version) {
+    return '当前版本：$version';
+  }
+
+  @override
+  String latestVersionLabel(String version) {
+    return '最新版本：$version';
+  }
+
+  @override
+  String get checkingForUpdates => '正在检查更新…';
+
+  @override
+  String get updateAvailableTitle => '发现新版本';
+
+  @override
+  String get upToDateTitle => '已是最新版本';
+
+  @override
+  String get upToDateDescription => '当前安装的是最新正式版本。';
+
+  @override
+  String updateAssetDetail(String variant, String size) {
+    return '$variant · $size';
+  }
+
+  @override
+  String get downloadAndInstall => '下载并安装';
+
+  @override
+  String updateDownloading(int percent) {
+    return '正在下载更新… $percent%';
+  }
+
+  @override
+  String get verifyingUpdate => '正在校验 APK…';
+
+  @override
+  String get installPermissionRequiredTitle => '允许安装应用';
+
+  @override
+  String get installPermissionRequiredDescription =>
+      'Android 需要允许 Lumina 在系统安装器中打开已下载的 APK。请开启该权限，返回此页面后重试安装。';
+
+  @override
+  String get openInstallSettings => '打开安装权限设置';
+
+  @override
+  String get retryInstall => '重试安装';
+
+  @override
+  String get checkAgain => '重新检查';
+
+  @override
+  String get updateCheckFailed => '无法检查更新，请确认网络连接后重试。';
+
+  @override
+  String get updateDownloadFailed => '更新下载失败，或下载文件与发布内容不一致。';
+
+  @override
+  String get updateInstallFailed => 'Android 无法校验或打开此更新，当前应用未被修改。';
+
+  @override
+  String get updateInstallerLaunched =>
+      '已将校验通过的 APK 交给 Android 系统安装器，请在系统界面确认更新。';
 }

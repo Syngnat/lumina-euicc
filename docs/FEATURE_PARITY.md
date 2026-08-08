@@ -37,6 +37,18 @@
 | `processNotification` | 仅 Kotlin handler；尚无 Dart API / Flutter 操作 |
 | `deleteNotification` | 仅 Kotlin handler；尚无 Dart API / Flutter 操作 |
 
+## 应用更新
+
+| API | 说明 |
+|---|---|
+| `getAppRuntimeInfo` | 返回当前版本、版本号和设备 ABI，不返回设备标识符 |
+| `prepareUpdateFile` | 在应用私有缓存中准备经过名称约束的 APK 路径 |
+| `verifyAndInstallUpdate` | 校验 SHA-256、大小、包名、目标版本、版本递增及完整签名集合后打开 Android 系统安装器 |
+| `openInstallPermissionSettings` | 打开本应用的“安装未知应用”系统授权页；不支持静默安装 |
+
+Flutter 仅接受官方仓库的不可变稳定 Release，并选择与当前安装一致的 APK
+架构系列。首次带更新器的 `0.1.3` 仍需从 GitHub Release 手动安装。
+
 ## 与上游映射（集成时）
 
 OpenEUICC `EuiccChannelManagerService`：

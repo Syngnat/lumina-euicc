@@ -17,6 +17,7 @@ Lumina is intentionally an ordinary, non-root Android app. It does not require o
 | Profile list / enable / disable / delete / rename | Flutter and native paths implemented; listing succeeded on one exact 9eSIM-card/device combination, while enable/disable/delete/rename remain unvalidated on hardware |
 | Download via activation code / QR + progress + confirm | UI, channel contract, and native path implemented; real-card validation pending |
 | Compatibility check | Read-only package/signing identity, per-slot OMAPI/ARA-M, and LPA diagnostics implemented; one field result opened ISD-R on OMAPI slot 1 and discovered port 1/0 without exposing a card identifier |
+| Online update | Settings can check the official immutable GitHub Release, preserve the installed APK ABI family, verify SHA-256/package/version/exact four-signer identity, and open the Android system installer; silent installation is intentionally unsupported |
 | Notifications | List UI implemented; native process/delete handlers are not exposed through the Dart API or UI |
 | Memory reset | UI and bridge implemented; destructive real-card path not validated |
 | OpenEUICC `lpac-jni` + `app-common` | Vendored, wired, and included in successful Windows debug and dedicated-key release APK builds; broader read, write, and USB device validation remains |
@@ -44,7 +45,11 @@ metadata.
 Phone-slot access ultimately depends on the exact card's effective ARA-M rule.
 The pass/fail results from two cards bought from the same retailer demonstrate
 that seller name alone is not a compatibility guarantee; batch or card
-personalization can differ. A certificate-only rule may match any current
+personalization can differ. The denied card was retested with Lumina `0.1.2` on
+an OPPO PME110 / OP61C1L1 running Android 16 (API 36): OMAPI enumerated SIM 0
+and SIM 1, the SIM 0 probe reached the ISD-R access check, and access control
+then denied the current Lumina identity. This proves the phone-side OMAPI path
+was present; it does not indicate a locked phone channel. A certificate-only rule may match any current
 Lumina signer, while a package-bound rule must also name
 `top.syngnat.lumina.euicc`. Download, enable/disable, rename, delete, and other
 mutating operations were not exercised in the successful read-only test. See
@@ -103,6 +108,15 @@ For normal installation, download APKs from [GitHub Releases](https://github.com
 For a recent OPPO phone running Android 16, choose **`arm64-v8a`**. Lumina supports Android 9+ (API 28+); an older Android version does not by itself mean that the phone needs `armeabi-v7a`.
 
 For later updates, keep using the same APK family when possible. Flutter assigns ABI-split APKs architecture-specific version codes, so moving from an ABI-specific installation back to `universal` may require uninstalling the app first; profiles stored on the removable eUICC are unaffected.
+
+Starting with `0.1.3`, **Settings → Software update** can check and download the
+latest official immutable GitHub Release. It automatically keeps the installed
+APK family (`arm64-v8a`, `armeabi-v7a`, `x86_64`, or `universal`), verifies the
+GitHub SHA-256 digest and then asks Android to verify the package, newer version,
+and exact installed four-signer set before opening the system installer. Android
+still requires the user to approve installation and may first ask for the
+per-app “install unknown apps” permission. Existing `0.1.2` installations do
+not contain the updater, so `0.1.3` must be installed manually once.
 
 Each GitHub Release custom-uploads only the four APK variants. GitHub also shows
 its automatic `Source code (zip)` and `Source code (tar.gz)` entries for the

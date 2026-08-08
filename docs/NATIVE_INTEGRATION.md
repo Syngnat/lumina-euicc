@@ -8,14 +8,15 @@ Lumina is an unprivileged application by design. Root, Magisk, Shizuku, system-a
 
 | Layer | Status |
 |---|---|
-| Flutter UI | Home, profile, download, compatibility, and settings screens are present |
+| Flutter UI | Home, profile, download, compatibility, settings, and software-update screens are present |
 | Notification UI | Lists pending notifications only; process/delete actions are not exposed in Dart or Flutter |
-| MethodChannel API | Profile/download/device operations and notification listing are exposed to Dart; native-only notification process/delete handlers remain |
+| MethodChannel API | Profile/download/device/update operations and notification listing are exposed to Dart; native-only notification process/delete handlers remain |
 | EventChannel download progress | Implemented in code, including confirmation/cancellation flow |
 | OpenEUICC `app-common` + `lpac-jni` as Gradle modules | **Included under `third_party/OpenEUICC`** |
 | `EuiccBridgePlugin` real LPA path | Implemented in code for profile operations, download, notification handlers, memory reset, eUICC info, and compatibility; channel/profile listing has one limited field result, while all mutation paths remain device-unvalidated |
 | USB CCID permission / hotplug UX | Transport scan is present, but the Lumina Flutter activity does not yet expose the complete runtime permission request or attach/detach refresh flow; no reader is device-validated |
 | Mock fallback | Debug builds only; release builds return `mode=unavailable` and no invented channel/profile |
+| Online update | Official immutable GitHub Release lookup, installed-ABI selection, bounded private-cache download, SHA-256/package/version/exact-signer verification, and Android system-installer launch are implemented; no silent install or card privilege is added |
 
 ## Intended runtime behaviour
 
@@ -52,10 +53,15 @@ reported eUICC port 1/0 and a valid LPA channel, and the home screen listed
 multiple real profiles. The exact 9eSIM model, phone model, and Android version
 were not recorded.
 
-Another card bought from the same retailer was rejected by ARA-M with the same
-Lumina version. This establishes that seller identity does not guarantee equal
-card personalization or effective ARA-M policy; a same-device swap and card
-rule inspection would be required to isolate the exact difference. Neither
+Another card bought from the same retailer was retested with Lumina `0.1.2` on
+an OPPO PME110 / OP61C1L1 running Android 16 (API 36). OMAPI enumerated SIM 0
+and SIM 1; the SIM 0 probe reached the ISD-R access check before Android/UICC
+access control denied the current Lumina identity. SIM 1 separately returned a
+sanitized `IOException`, and no LPA port opened. This establishes that the
+phone-side OMAPI/ISD-R path was reached and that seller identity does not
+guarantee equal card personalization or effective ARA-M policy; it is not
+evidence of a phone channel lock. A same-device card swap and card rule
+inspection would be required to isolate the exact card difference. Neither
 result validates download, enable/disable, rename, delete, memory reset, or USB
 CCID behavior.
 

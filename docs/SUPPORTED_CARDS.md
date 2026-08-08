@@ -26,7 +26,7 @@ ICCID, or profile credentials are recorded here.
 | Observation | Result | What it establishes |
 |---|---|---|
 | Seller-described 9eSIM card; exact model, phone model, and Android version not recorded | Compatibility diagnostics showed the current app identity opening ISD-R on OMAPI slot 1, eUICC port 1/0 discovered, and a valid LPA channel. The home screen then listed multiple real profiles | The exact card/device combination supports read-only channel discovery and profile listing with Lumina `0.1.1` |
-| Another card bought from the same retailer | OMAPI was present, but the current Lumina signer set was rejected by ARA-M | A shared retailer does not establish identical card personalization or effective ARA-M rules, and does not guarantee compatibility |
+| Another card bought from the same retailer; Lumina `0.1.2`, OPPO PME110 / OP61C1L1, Android 16 / API 36 | OMAPI enumerated SIM 0 and SIM 1. The SIM 0 probe reached the ISD-R access check, then access control rejected the current Lumina identity. SIM 1 separately returned a sanitized `IOException`; no LPA port opened | The phone-side OMAPI/ISD-R path was present, so this is not evidence of a locked phone channel. A shared retailer still does not establish identical card personalization or effective ARA-M rules |
 
 The second result is consistent with per-card or per-batch personalization
 differences. A same-phone card swap and the effective ARA-M data would be needed

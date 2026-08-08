@@ -488,4 +488,90 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get compatibilityRootlessAraMRequired =>
       'No root is used or required. For a card in the phone, its access-control rule must match at least one current Lumina signing certificate; if the rule also binds an Android package, it must match Lumina\'s package. USB CCID uses a separate permission path.';
+
+  @override
+  String get softwareUpdate => 'Software update';
+
+  @override
+  String get softwareUpdateDescription =>
+      'Check for signed updates from GitHub Releases';
+
+  @override
+  String get updateSourceDescription =>
+      'Updates come only from the official immutable Lumina GitHub Release.';
+
+  @override
+  String get updateSecurityDescription =>
+      'The APK download is checked against GitHub\'s SHA-256 digest. Android also requires the package and complete signing-certificate set to match the installed app.';
+
+  @override
+  String currentVersionLabel(String version) {
+    return 'Current version: $version';
+  }
+
+  @override
+  String latestVersionLabel(String version) {
+    return 'Latest version: $version';
+  }
+
+  @override
+  String get checkingForUpdates => 'Checking for updates…';
+
+  @override
+  String get updateAvailableTitle => 'Update available';
+
+  @override
+  String get upToDateTitle => 'You\'re up to date';
+
+  @override
+  String get upToDateDescription =>
+      'This is the latest published stable version.';
+
+  @override
+  String updateAssetDetail(String variant, String size) {
+    return '$variant · $size';
+  }
+
+  @override
+  String get downloadAndInstall => 'Download and install';
+
+  @override
+  String updateDownloading(int percent) {
+    return 'Downloading update… $percent%';
+  }
+
+  @override
+  String get verifyingUpdate => 'Verifying the APK…';
+
+  @override
+  String get installPermissionRequiredTitle => 'Allow app installs';
+
+  @override
+  String get installPermissionRequiredDescription =>
+      'Android must allow Lumina to open its downloaded APK in the system installer. Enable this permission, return here, then retry installation.';
+
+  @override
+  String get openInstallSettings => 'Open install settings';
+
+  @override
+  String get retryInstall => 'Retry installation';
+
+  @override
+  String get checkAgain => 'Check again';
+
+  @override
+  String get updateCheckFailed =>
+      'Could not check for updates. Check the network connection and try again.';
+
+  @override
+  String get updateDownloadFailed =>
+      'The update could not be downloaded or did not match the published file.';
+
+  @override
+  String get updateInstallFailed =>
+      'Android could not verify or open this update. The installed app was not changed.';
+
+  @override
+  String get updateInstallerLaunched =>
+      'The verified APK was handed to Android\'s system installer. Confirm the update there.';
 }

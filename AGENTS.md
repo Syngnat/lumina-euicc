@@ -78,6 +78,7 @@ OMAPI (removable eUICC)  or  USB CCID reader
 | Compatibility check | UI/bridge path implemented |
 | Notifications | Listing is exposed in Flutter; process/delete have native handlers but no Dart API or UI actions |
 | Memory reset | UI/bridge path implemented; destructive hardware path not validated |
+| Online update | Settings UI and Dart/Kotlin path accept only the official immutable GitHub Release, preserve the installed APK ABI family, verify SHA-256/package/newer-version/exact signer set, and launch the user-confirmed Android installer |
 | eUICC info (EID, etc.) | Dart/native API implemented; no dedicated Flutter presentation or hardware validation |
 | Internal eSIM | **Out of scope** (needs privileged OpenEUICC) |
 
@@ -95,7 +96,11 @@ to `0.1.1` opening ISD-R on OMAPI slot 1, discovering port 1/0, validating the
 LPA channel, and listing profiles on one seller-described 9eSIM card. Its exact
 card model, phone model, and Android version were not recorded. Another card
 from the same retailer was rejected by ARA-M; no mutation or USB operation is
-validated, and no 9eSIM family or retailer is certified.
+validated, and no 9eSIM family or retailer is certified. The denied card was
+retested with `0.1.2` on OPPO PME110 / OP61C1L1, Android 16 / API 36: OMAPI
+enumerated both SIM slots and the SIM 0 probe reached the ISD-R access check
+before access control denied the current app identity. This is card/application
+authorization evidence, not evidence of a locked OPPO channel.
 
 ## MethodChannel contract (summary)
 
@@ -108,6 +113,7 @@ Methods (see `lib/services/euicc_bridge.dart` + `EuiccBridgePlugin.kt`):
 - `listProfiles` / `switchProfile` / `deleteProfile` / `renameProfile`
 - `downloadProfile` returns a `taskId`; every EventChannel event and each confirm/cancel call carries that ID to prevent cross-task delivery
 - `runCompatibilityCheck` / `getEuiccInfo` / `memoryReset`
+- `getAppRuntimeInfo` / `prepareUpdateFile` / `verifyAndInstallUpdate` / `openInstallPermissionSettings` for user-confirmed official Release updates
 - Dart-visible notification method: `listNotifications`
 - Native handlers without Dart/UI exposure: `processNotification` / `deleteNotification`
 
@@ -193,7 +199,7 @@ Use CI or a sufficiently provisioned Android host for native builds. A failed or
 ### Remaining (next agent should focus here)
 
 1. Reproduce the verified Windows build in GitHub Actions after commit/push
-2. **Expand real-device validation** with exact card/phone/version records: one model-unknown 9eSIM combination can list profiles, a same-retailer card is ARA-M-denied, verified named card models = 0, and mutations/USB CCID remain untested
+2. **Expand real-device validation** with exact card/phone/version records: one model-unknown 9eSIM combination can list profiles; a same-retailer card on OPPO PME110 / OP61C1L1, Android 16 / API 36 reaches ISD-R then is access-control denied; verified named card models = 0, and mutations/USB CCID remain untested
 3. Replace the bridge's independently held `DefaultEuiccChannelManager` with the upstream `EuiccChannelManagerService` lifecycle before claiming hotplug/long-running stability
 4. Expose notification process/delete through the Dart API and Flutter UI if full parity requires them
 5. Optional: Flutter screens for OpenEUICC developer settings (ISD-R AID list, verbose logs UI)

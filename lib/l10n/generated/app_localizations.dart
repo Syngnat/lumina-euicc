@@ -854,6 +854,144 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No root is used or required. For a card in the phone, its access-control rule must match at least one current Lumina signing certificate; if the rule also binds an Android package, it must match Lumina\'s package. USB CCID uses a separate permission path.'**
   String get compatibilityRootlessAraMRequired;
+
+  /// No description provided for @softwareUpdate.
+  ///
+  /// In en, this message translates to:
+  /// **'Software update'**
+  String get softwareUpdate;
+
+  /// No description provided for @softwareUpdateDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Check for signed updates from GitHub Releases'**
+  String get softwareUpdateDescription;
+
+  /// No description provided for @updateSourceDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Updates come only from the official immutable Lumina GitHub Release.'**
+  String get updateSourceDescription;
+
+  /// No description provided for @updateSecurityDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'The APK download is checked against GitHub\'s SHA-256 digest. Android also requires the package and complete signing-certificate set to match the installed app.'**
+  String get updateSecurityDescription;
+
+  /// No description provided for @currentVersionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Current version: {version}'**
+  String currentVersionLabel(String version);
+
+  /// No description provided for @latestVersionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Latest version: {version}'**
+  String latestVersionLabel(String version);
+
+  /// No description provided for @checkingForUpdates.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking for updates…'**
+  String get checkingForUpdates;
+
+  /// No description provided for @updateAvailableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Update available'**
+  String get updateAvailableTitle;
+
+  /// No description provided for @upToDateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re up to date'**
+  String get upToDateTitle;
+
+  /// No description provided for @upToDateDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'This is the latest published stable version.'**
+  String get upToDateDescription;
+
+  /// No description provided for @updateAssetDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'{variant} · {size}'**
+  String updateAssetDetail(String variant, String size);
+
+  /// No description provided for @downloadAndInstall.
+  ///
+  /// In en, this message translates to:
+  /// **'Download and install'**
+  String get downloadAndInstall;
+
+  /// No description provided for @updateDownloading.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading update… {percent}%'**
+  String updateDownloading(int percent);
+
+  /// No description provided for @verifyingUpdate.
+  ///
+  /// In en, this message translates to:
+  /// **'Verifying the APK…'**
+  String get verifyingUpdate;
+
+  /// No description provided for @installPermissionRequiredTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow app installs'**
+  String get installPermissionRequiredTitle;
+
+  /// No description provided for @installPermissionRequiredDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Android must allow Lumina to open its downloaded APK in the system installer. Enable this permission, return here, then retry installation.'**
+  String get installPermissionRequiredDescription;
+
+  /// No description provided for @openInstallSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open install settings'**
+  String get openInstallSettings;
+
+  /// No description provided for @retryInstall.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry installation'**
+  String get retryInstall;
+
+  /// No description provided for @checkAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Check again'**
+  String get checkAgain;
+
+  /// No description provided for @updateCheckFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not check for updates. Check the network connection and try again.'**
+  String get updateCheckFailed;
+
+  /// No description provided for @updateDownloadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The update could not be downloaded or did not match the published file.'**
+  String get updateDownloadFailed;
+
+  /// No description provided for @updateInstallFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Android could not verify or open this update. The installed app was not changed.'**
+  String get updateInstallFailed;
+
+  /// No description provided for @updateInstallerLaunched.
+  ///
+  /// In en, this message translates to:
+  /// **'The verified APK was handed to Android\'s system installer. Confirm the update there.'**
+  String get updateInstallerLaunched;
 }
 
 class _AppLocalizationsDelegate

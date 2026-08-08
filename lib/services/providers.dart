@@ -1,9 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/euicc_models.dart';
+import 'app_update_service.dart';
 import 'euicc_bridge.dart';
 
 final euiccBridgeProvider = Provider<EuiccBridge>((ref) => EuiccBridge());
+
+final appUpdateServiceProvider = Provider<AppUpdateService>((ref) {
+  return GitHubAppUpdateService(bridge: ref.watch(euiccBridgeProvider));
+});
 
 final channelsProvider = FutureProvider<List<EuiccChannelInfo>>((ref) async {
   final bridge = ref.watch(euiccBridgeProvider);

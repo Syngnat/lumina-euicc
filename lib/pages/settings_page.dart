@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../l10n/l10n.dart';
 import '../services/providers.dart';
 import 'legal_page.dart';
+import 'update_page.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -15,6 +16,17 @@ class SettingsPage extends ConsumerWidget {
       appBar: AppBar(title: Text(context.l10n.settings)),
       body: ListView(
         children: [
+          ListTile(
+            leading: const Icon(Icons.system_update_alt),
+            title: Text(context.l10n.softwareUpdate),
+            subtitle: Text(context.l10n.softwareUpdateDescription),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const UpdatePage()),
+              );
+            },
+          ),
           ListTile(
             leading: const Icon(Icons.policy_outlined),
             title: Text(context.l10n.legalAndOpenSource),

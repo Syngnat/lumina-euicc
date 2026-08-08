@@ -259,11 +259,13 @@ jobs:
           release_apk_dir="${RUNNER_TEMP}/release-apks"
           mkdir -p "${release_apk_dir}"
 
-          flutter build apk --release --no-pub
+          flutter build apk --release --no-pub \
+            --dart-define=LUMINA_APK_VARIANT=universal
           cp build/app/outputs/flutter-apk/app-release.apk \
             "${release_apk_dir}/app-universal-release.apk"
 
-          flutter build apk --release --split-per-abi --no-pub
+          flutter build apk --release --split-per-abi --no-pub \
+            --dart-define=LUMINA_APK_VARIANT=split
           cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk \
             "${release_apk_dir}/app-arm64-v8a-release.apk"
           cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk \

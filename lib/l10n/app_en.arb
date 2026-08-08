@@ -223,5 +223,43 @@
   "compatibilityLpaChannelInvalid": "No valid LPA channel opened. Check the per-slot result and ARA-M rule.",
   "compatibilityRootlessTitle": "Rootless access / ARA-M",
   "compatibilityRootlessReady": "No root is used or required; a real LPA channel is available.",
-  "compatibilityRootlessAraMRequired": "No root is used or required. For a card in the phone, its access-control rule must match at least one current Lumina signing certificate; if the rule also binds an Android package, it must match Lumina's package. USB CCID uses a separate permission path."
+  "compatibilityRootlessAraMRequired": "No root is used or required. For a card in the phone, its access-control rule must match at least one current Lumina signing certificate; if the rule also binds an Android package, it must match Lumina's package. USB CCID uses a separate permission path.",
+  "softwareUpdate": "Software update",
+  "softwareUpdateDescription": "Check for signed updates from GitHub Releases",
+  "updateSourceDescription": "Updates come only from the official immutable Lumina GitHub Release.",
+  "updateSecurityDescription": "The APK download is checked against GitHub's SHA-256 digest. Android also requires the package and complete signing-certificate set to match the installed app.",
+  "currentVersionLabel": "Current version: {version}",
+  "@currentVersionLabel": {
+    "placeholders": {"version": {"type": "String"}}
+  },
+  "latestVersionLabel": "Latest version: {version}",
+  "@latestVersionLabel": {
+    "placeholders": {"version": {"type": "String"}}
+  },
+  "checkingForUpdates": "Checking for updates…",
+  "updateAvailableTitle": "Update available",
+  "upToDateTitle": "You're up to date",
+  "upToDateDescription": "This is the latest published stable version.",
+  "updateAssetDetail": "{variant} · {size}",
+  "@updateAssetDetail": {
+    "placeholders": {
+      "variant": {"type": "String"},
+      "size": {"type": "String"}
+    }
+  },
+  "downloadAndInstall": "Download and install",
+  "updateDownloading": "Downloading update… {percent}%",
+  "@updateDownloading": {
+    "placeholders": {"percent": {"type": "int"}}
+  },
+  "verifyingUpdate": "Verifying the APK…",
+  "installPermissionRequiredTitle": "Allow app installs",
+  "installPermissionRequiredDescription": "Android must allow Lumina to open its downloaded APK in the system installer. Enable this permission, return here, then retry installation.",
+  "openInstallSettings": "Open install settings",
+  "retryInstall": "Retry installation",
+  "checkAgain": "Check again",
+  "updateCheckFailed": "Could not check for updates. Check the network connection and try again.",
+  "updateDownloadFailed": "The update could not be downloaded or did not match the published file.",
+  "updateInstallFailed": "Android could not verify or open this update. The installed app was not changed.",
+  "updateInstallerLaunched": "The verified APK was handed to Android's system installer. Confirm the update there."
 }

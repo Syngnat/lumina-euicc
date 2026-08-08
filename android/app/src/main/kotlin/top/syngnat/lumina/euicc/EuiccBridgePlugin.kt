@@ -74,6 +74,7 @@ class EuiccBridgePlugin :
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     private val appContainer by lazy { DefaultAppContainer(appContext) }
+    private val appUpdateSupport by lazy { AppUpdateSupport(appContext) }
     private val manager: EuiccChannelManager by lazy {
         DefaultEuiccChannelManager(appContainer, appContext)
     }
@@ -164,6 +165,30 @@ class EuiccBridgePlugin :
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
             "scanQr" -> startQrScan(result)
+            "getAppRuntimeInfo" -> async(result) { appUpdateSupport.runtimeInfo() }
+            "prepareUpdateFile" -> async(result) {
+                val assetName = requireUpdateAssetName(call.argument<Any>("assetName"))
+                mapOf("path" to appUpdateSupport.prepareUpdateFile(assetName))
+            }
+            "verifyAndInstallUpdate" -> async(result) {
+                verifyAndInstallUpdate(
+                    path = requireStringArgument("path", call.argument<Any>("path")),
+                    expectedSha256 = requireUpdateSha256(call.argument<Any>("expectedSha256")),
+                    expectedSize = requireUpdateSize(call.argument<Any>("expectedSize")),
+                    expectedVersionName = requireUpdateVersionName(
+                        call.argument<Any>("expectedVersionName"),
+                    ),
+                )
+            }
+            "openInstallPermissionSettings" -> {
+                try {
+                    appUpdateSupport.openInstallPermissionSettings()
+                    result.success(mapOf("ok" to true))
+                } catch (e: Exception) {
+                    Log.e(TAG, "opening install permission settings failed", e)
+                    result.error("update_settings_unavailable", "Install settings are unavailable", null)
+                }
+            }
             "listChannels" -> async(result) { listChannels() }
             "listProfiles" -> async(result) {
                 listProfiles(
@@ -274,6 +299,25 @@ class EuiccBridgePlugin :
     }
 
     private suspend fun listChannels(): Map<String, Any> = channelDiscovery.listChannels()
+
+    private suspend fun verifyAndInstallUpdate(
+        path: String,
+        expectedSha256: String,
+        expectedSize: Long,
+        expectedVersionName: String,
+    ): Map<String, Any> {
+        val apk = appUpdateSupport.verifyUpdate(
+            path = path,
+            expectedSha256 = expectedSha256,
+            expectedSize = expectedSize,
+            expectedVersionName = expectedVersionName,
+        )
+        if (!appUpdateSupport.canRequestPackageInstalls()) {
+            return mapOf("status" to "permissionRequired")
+        }
+        withContext(Dispatchers.Main) { appUpdateSupport.launchInstaller(apk) }
+        return mapOf("status" to "launched")
+    }
 
     private fun shouldUseMockChannel(slotId: Int): Boolean {
         if (!isMockChannel(slotId)) return false

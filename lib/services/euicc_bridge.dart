@@ -25,6 +25,44 @@ class EuiccBridge {
 
   Future<String?> scanQr() => _methods.invokeMethod<String>('scanQr');
 
+  Future<Map<String, dynamic>> getAppRuntimeInfo() async {
+    final raw = await _methods.invokeMethod<Map>('getAppRuntimeInfo');
+    return Map<String, dynamic>.from(raw ?? const {});
+  }
+
+  Future<String> prepareUpdateFile(String assetName) async {
+    final raw = await _methods.invokeMethod<Map>('prepareUpdateFile', {
+      'assetName': assetName,
+    });
+    final path = raw?['path']?.toString();
+    if (path == null || path.isEmpty) {
+      throw StateError('Native update storage did not return a path');
+    }
+    return path;
+  }
+
+  Future<String> verifyAndInstallUpdate({
+    required String path,
+    required String expectedSha256,
+    required int expectedSize,
+    required String expectedVersionName,
+  }) async {
+    final raw = await _methods.invokeMethod<Map>('verifyAndInstallUpdate', {
+      'path': path,
+      'expectedSha256': expectedSha256,
+      'expectedSize': expectedSize,
+      'expectedVersionName': expectedVersionName,
+    });
+    final status = raw?['status']?.toString();
+    if (status == null || status.isEmpty) {
+      throw StateError('Native update installer did not return a status');
+    }
+    return status;
+  }
+
+  Future<void> openInstallPermissionSettings() =>
+      _methods.invokeMethod<void>('openInstallPermissionSettings');
+
   Future<List<EuiccChannelInfo>> listChannels() async {
     final raw = await _methods.invokeMethod<Map>('listChannels');
     final list = (raw?['channels'] as List?) ?? const [];
