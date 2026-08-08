@@ -59,7 +59,8 @@ OMAPI (removable eUICC)  or  USB CCID reader
 | `third_party/OpenEUICC/` | Vendored upstream sources; preserve each component's license files |
 | `docs/FEATURE_PARITY.md` | Native/API capability mapping; not proof of Flutter UI exposure |
 | `docs/NATIVE_INTEGRATION.md` | Integration status & build notes |
-| `NOTICE.md` | Upstream license attribution |
+| `LICENSE` / `LICENSES_SCOPE.md` | GPL-3.0-only text and precise project/third-party license boundary |
+| `NOTICE.md` / `THIRD_PARTY_NOTICES.md` | Copyright attribution and component-specific third-party terms |
 
 ## Feature parity (EasyEUICC unprivileged)
 
@@ -104,12 +105,23 @@ Activation codes: `LPA:1$smdp.example.com$matchingId...` (parsed like OpenEUICC 
 
 ## License constraints (critical)
 
+- Lumina-owned portions are Copyright (C) 2026 Syngnat and licensed
+  GPL-3.0-only under the root `LICENSE`; `LICENSES_SCOPE.md` defines the exact
+  boundary.
 - `third_party/OpenEUICC/LICENSE` applies GPL-3.0-only terms to OpenEUICC.
 - lpac-jni and cJSON retain different licenses in their bundled license files; do not label every vendored component GPL-3.0-only.
-- This repository currently has no top-level license granting rights for Lumina-owned code; `NOTICE.md` is attribution, not a license grant.
-- Do not distribute a binary linking OpenEUICC until the project license, complete corresponding source, notices, and all applicable GPL-3.0 obligations are resolved.
+- A signed APK may be distributed only with its matching exact-commit source
+  archive, dependency-source archive/manifests, `SOURCE_INFO.txt`, dependency
+  inventories, checksums, and root/nested license materials produced by the
+  same trusted CI run. Do not publish or redistribute a bare APK detached from
+  those materials.
+- The exact upstream OpenEUICC revision was not retained separately. The
+  authoritative source is the tracked `third_party/OpenEUICC` snapshot in the
+  full Lumina commit recorded by `SOURCE_INFO.txt`; never invent an upstream
+  commit identifier.
 - Do **not** ship under EasyEUICC package name `im.angry.easyeuicc` (upstream asks derivatives to rename)
-- Do **not** strip `NOTICE.md` / upstream `LICENSE` files
+- Do **not** strip `NOTICE.md`, `THIRD_PARTY_NOTICES.md`,
+  `LICENSES_SCOPE.md`, or upstream license files.
 
 ## Build (Windows / agent on a real Android host)
 
@@ -132,11 +144,11 @@ Requirements:
 - CMake 3.22.1 for `jni` 1.0.3's `externalNativeBuild.cmake` path
 - Checked-in Gradle 8.9 wrapper
 
-OpenEUICC `lpac-jni` uses `externalNativeBuild.ndkBuild`; pub package `jni` 1.0.3 separately uses `externalNativeBuild.cmake`. The app and `mobile_scanner` 6.0.11 compile against SDK 36 and target SDK 35; vendored `app-common` and `lpac-jni` compile against SDK 35. Keep both SDK platforms, both Build Tools versions, both NDKs, and CMake in CI unless those locked dependencies change.
+OpenEUICC `lpac-jni` uses `externalNativeBuild.ndkBuild`; pub package `jni` 1.0.3 separately uses `externalNativeBuild.cmake`. The Lumina app compiles against SDK 36 and targets SDK 35; vendored `app-common` and `lpac-jni` compile against SDK 35. Keep both SDK platforms, both Build Tools versions, both NDKs, and CMake in CI unless those locked dependencies change.
 
-Verified on Windows on 2026-08-08: 16 Flutter tests, 29 Kotlin/JUnit tests, `flutter build apk --debug --no-pub`, and a dedicated-key `:app:assembleRelease` all passed. `apksigner` verified the release APK with v2 signing and certificate SHA-256 `1F:C1:52:76:70:A8:0B:2B:B5:A8:1F:FC:D2:D8:D7:82:C2:AD:00:3A:21:8F:2C:AD:42:9D:30:08:81:07:D8:9F`. Debug/release ZIP alignment passed, and every 64-bit native ELF—including `liblpac-jni.so`—has `LOAD` alignment of at least `2**14`. The APK contains the three configured ABIs and both native build paths. This is not real-card validation; consult GitHub Actions for the current pushed-commit result. Flutter currently warns that Gradle 8.9, AGP 8.7.0, and Kotlin 2.0.21 are nearing its support floor.
+Verified on Windows on 2026-08-08 after the legal-screen/native-ZXing changes: `flutter analyze --no-pub` reported no issues, all 21 Flutter tests passed, all 32 Kotlin/JUnit tests passed, and a dedicated-key `:app:assembleRelease` completed successfully. `apksigner` verified that release APK with v2 signing and certificate SHA-256 `1F:C1:52:76:70:A8:0B:2B:B5:A8:1F:FC:D2:D8:D7:82:C2:AD:00:3A:21:8F:2C:AD:42:9D:30:08:81:07:D8:9F`. Release ZIP alignment passed, and every 64-bit native ELF—including `liblpac-jni.so`—had `LOAD` alignment of at least `2**14`. The APK contained the three configured ABIs and both native build paths. This is not real-card validation; consult GitHub Actions for the exact pushed-commit result. Flutter currently warns that Gradle 8.9, AGP 8.7.0, and Kotlin 2.0.21 are nearing its support floor.
 
-GitHub Actions uses a `verify` job for pull requests/main/manual runs and a separate dedicated-key `release` job only on trusted `main`. Release secrets live in the `release-signing` Environment, which is restricted to `main`; never move them into source, logs, PR jobs, or artifacts. CI verifies package/SDK/ABI metadata, v2 signing, one signer, the fixed certificate, ZIP alignment, and every arm64-v8a/x86_64 ELF. Do not upload APK/AAB artifacts until binary-distribution licensing is resolved.
+GitHub Actions uses a `verify` job for pull requests/main/manual runs and a separate dedicated-key `release` job only on trusted `main`. Release secrets live in the `release-signing` Environment, which is restricted to `main`; never move them into source, logs, PR jobs, or artifacts. CI verifies package/SDK/ABI metadata, v2 signing, one signer, the fixed certificate, ZIP alignment, and every arm64-v8a/x86_64 ELF. A trusted release publishes the signed APK only as part of a bundle containing the matching exact-commit project source, hosted Pub sources, available Maven source JARs/POMs, exact Flutter framework/engine source references, source manifests, `SOURCE_INFO.txt`, checksums, dependency inventories, and license materials.
 
 Use CI or a sufficiently provisioned Android host for native builds. A failed or unattempted low-resource build is not validation evidence.
 
@@ -158,7 +170,8 @@ Use CI or a sufficiently provisioned Android host for native builds. A failed or
 3. Replace the bridge's independently held `DefaultEuiccChannelManager` with the upstream `EuiccChannelManagerService` lifecycle before claiming hotplug/long-running stability
 4. Expose notification process/delete through the Dart API and Flutter UI if full parity requires them
 5. Optional: Flutter screens for OpenEUICC developer settings (ISD-R AID list, verbose logs UI)
-6. Back up the dedicated release keystore/properties, then resolve top-level licensing, corresponding-source packaging, and distribution only if requested
+6. Back up the dedicated release keystore/properties and keep the CI release
+   bundle/source packaging gates in sync with dependency or license changes
 7. Polish UI (animations, empty states, dark theme edge cases)
 
 ## Conventions for agents

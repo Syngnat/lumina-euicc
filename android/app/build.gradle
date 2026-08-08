@@ -99,6 +99,7 @@ flutter {
 
 dependencies {
     implementation project(":app-common")
+    implementation "com.journeyapps:zxing-android-embedded:4.3.0"
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0"
     testImplementation "junit:junit:4.13.2"
 }

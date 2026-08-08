@@ -18,6 +18,71 @@ const _channel = EuiccChannelInfo(
 );
 
 void main() {
+  testWidgets('a scanned QR code fills the activation code field',
+      (tester) async {
+    final bridge = FakeEuiccBridge()
+      ..scanQrResult = r'LPA:1$scan.example.com$matching-id';
+    addTearDown(bridge.dispose);
+    await _pumpDownloadLauncher(tester, bridge);
+
+    await tester.tap(find.text('Open download'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Scan QR'));
+    await tester.pump();
+
+    final activationCode =
+        tester.widget<TextField>(find.byType(TextField).first);
+    expect(
+      activationCode.controller!.text,
+      r'LPA:1$scan.example.com$matching-id',
+    );
+  });
+
+  testWidgets('a QR scanner failure is shown without leaving the page',
+      (tester) async {
+    final bridge = FakeEuiccBridge()
+      ..scanQrError = StateError('camera unavailable');
+    addTearDown(bridge.dispose);
+    await _pumpDownloadLauncher(tester, bridge);
+
+    await tester.tap(find.text('Open download'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Scan QR'));
+    await tester.pump();
+
+    expect(find.textContaining('camera unavailable'), findsOneWidget);
+    expect(find.text('Download profile'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('only one QR scanner can be active at a time', (tester) async {
+    final scan = Completer<String?>();
+    final bridge = FakeEuiccBridge()..scanQrFuture = scan.future;
+    addTearDown(bridge.dispose);
+    await _pumpDownloadLauncher(tester, bridge);
+
+    await tester.tap(find.text('Open download'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Scan QR'));
+    await tester.pump();
+
+    final scannerButton = tester.widget<IconButton>(
+      find.byKey(const Key('scanQrButton')),
+    );
+    expect(scannerButton.onPressed, isNull);
+    expect(bridge.scanQrCalls, 1);
+
+    scan.complete(r'LPA:1$scan.example.com$single');
+    await tester.pump();
+
+    final activationCode =
+        tester.widget<TextField>(find.byType(TextField).first);
+    expect(
+      activationCode.controller!.text,
+      r'LPA:1$scan.example.com$single',
+    );
+  });
+
   testWidgets('leaving an active download cancels the native task',
       (tester) async {
     final bridge = FakeEuiccBridge();

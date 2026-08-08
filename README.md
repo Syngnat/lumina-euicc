@@ -69,19 +69,31 @@ An EasyEUICC-compatible card normally authorizes EasyEUICC's certificate, not th
 flutter build apk --release --no-pub
 ```
 
-## CI and Android 16
+## CI, releases, and Android 16
 
-GitHub Actions runs Dart analysis, Flutter tests, Kotlin unit tests, a debug APK build, APK metadata checks, and both ZIP and ELF 16 KB alignment checks. A separate `release-signing` environment is restricted to `main` and builds a dedicated-key release APK, then verifies the package ID, SDK levels, ABIs, v2 signature, single signer, certificate fingerprint, and 16 KB compatibility. APKs are not uploaded while binary-distribution licensing remains unresolved.
+GitHub Actions runs Dart analysis, Flutter tests, Kotlin unit tests, a debug APK build, APK metadata checks, and both ZIP and ELF 16 KB alignment checks. A separate `release-signing` environment is restricted to `main` and builds a dedicated-key release APK, then verifies the package ID, SDK levels, ABIs, v2 signature, single signer, certificate fingerprint, and 16 KB compatibility.
+
+On a trusted `main` run, CI publishes one release artifact containing the signed APK and its matching compliance materials: `lumina-euicc-source-<full-commit-sha>.zip`, `lumina-euicc-dependency-sources-<full-commit-sha>.zip`, `SOURCE_INFO.txt`, `SHA256SUMS`, resolved Flutter/Gradle inventories and source manifests, and root/nested license notices. The metadata records exact Flutter framework/engine revisions and source URLs; unavailable Maven source artifacts are explicitly marked with candidate source/POM URLs. Download the complete artifact from that commit's GitHub Actions run, verify the checksum before installing, and keep the source/notices together when redistributing the APK. Pull-request jobs never receive the release signing secrets and do not publish a signed APK.
 
 The app currently compiles with API 36 and targets API 35, so Android 16 installation is covered without opting into target-36 behaviour changes. CI cannot validate OPPO/ColorOS OMAPI, ARA-M access rules, or a physical eUICC; those checks must be run on the phone.
 
 ## License
 
-- This repository currently has no top-level `LICENSE` granting rights for Lumina-owned code; `NOTICE.md` is attribution, not a project license.
-- Vendored components retain the licenses shipped in their own directories. In particular, OpenEUICC is GPL-3.0-only, while lpac-jni and cJSON carry different upstream license files.
-- Because the app links OpenEUICC code, binary distribution requires resolving the project license and satisfying all applicable GPL-3.0 corresponding-source obligations. The current repository should not be treated as release-ready legal packaging.
+- Lumina-owned portions are Copyright (C) 2026 Syngnat and licensed
+  `GPL-3.0-only`; see [LICENSE](LICENSE) and the precise
+  [license scope](LICENSES_SCOPE.md).
+- Vendored and registry components retain their own licenses. OpenEUICC is
+  GPL-3.0-only; lpac-jni, lpac components, cJSON, and other dependencies keep
+  the component-specific terms documented in
+  [third-party notices](THIRD_PARTY_NOTICES.md) and nested license files.
+- Each CI-distributed APK is accompanied by exact-commit project source,
+  dependency-source archive/manifests, dependency inventories, notices, source
+  metadata, and checksums. These files form one release set and should remain
+  together on redistribution.
 
 ## Docs
 
 - [Native/API capability mapping](docs/FEATURE_PARITY.md)
 - [Native integration](docs/NATIVE_INTEGRATION.md)
+- [License scope](LICENSES_SCOPE.md)
+- [Third-party notices](THIRD_PARTY_NOTICES.md)

@@ -374,6 +374,132 @@ abstract class AppLocalizations {
   /// **'Lumina eUICC — Flutter UI aligned with EasyEUICC capabilities.\nCore LPA runs in the Android native bridge.'**
   String get aboutDescription;
 
+  /// No description provided for @legalAndOpenSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Legal & open source'**
+  String get legalAndOpenSource;
+
+  /// No description provided for @legalAndOpenSourceDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'License, source code, warranty, and third-party notices'**
+  String get legalAndOpenSourceDescription;
+
+  /// No description provided for @projectLicense.
+  ///
+  /// In en, this message translates to:
+  /// **'Lumina license'**
+  String get projectLicense;
+
+  /// No description provided for @projectLicenseDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Lumina-owned code is free software licensed under the GNU General Public License version 3 only.'**
+  String get projectLicenseDescription;
+
+  /// No description provided for @noWarrantyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No warranty'**
+  String get noWarrantyTitle;
+
+  /// No description provided for @noWarrantyDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Lumina is provided without any warranty, to the extent permitted by law. See sections 15 and 16 of GPL v3.'**
+  String get noWarrantyDescription;
+
+  /// No description provided for @sourceCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Source code'**
+  String get sourceCode;
+
+  /// No description provided for @sourceCodeDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'The project source is available at:'**
+  String get sourceCodeDescription;
+
+  /// No description provided for @copySourceCodeUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy source code URL'**
+  String get copySourceCodeUrl;
+
+  /// No description provided for @sourceCodeUrlCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Source code URL copied'**
+  String get sourceCodeUrlCopied;
+
+  /// No description provided for @thirdPartySoftware.
+  ///
+  /// In en, this message translates to:
+  /// **'Third-party software'**
+  String get thirdPartySoftware;
+
+  /// No description provided for @openEuiccAttribution.
+  ///
+  /// In en, this message translates to:
+  /// **'Peter Cai and contributors · GPL-3.0-only.'**
+  String get openEuiccAttribution;
+
+  /// No description provided for @lpacAttribution.
+  ///
+  /// In en, this message translates to:
+  /// **'ESTKME TECHNOLOGY LIMITED and OpenEUICC contributors · lpac-jni and the compiled lpac euicc component are LGPL-2.1-only; other vendored lpac files retain their component-specific licenses.'**
+  String get lpacAttribution;
+
+  /// No description provided for @cjsonAttribution.
+  ///
+  /// In en, this message translates to:
+  /// **'Dave Gamble and cJSON contributors · MIT License.'**
+  String get cjsonAttribution;
+
+  /// No description provided for @zxingAttribution.
+  ///
+  /// In en, this message translates to:
+  /// **'JourneyApps, ZXing authors, and contributors · Apache License 2.0 (Apache-2.0). Used for on-device QR decoding; Google ML Kit is not included.'**
+  String get zxingAttribution;
+
+  /// No description provided for @legalDocuments.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete legal documents'**
+  String get legalDocuments;
+
+  /// No description provided for @legalDocumentsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete license texts and attribution are provided in the corresponding-source bundle and repository: LICENSE, NOTICE.md, THIRD_PARTY_NOTICES.md, LICENSES_SCOPE.md, and the component LICENSE files under third_party/OpenEUICC/.'**
+  String get legalDocumentsDescription;
+
+  /// No description provided for @runtimeLicenses.
+  ///
+  /// In en, this message translates to:
+  /// **'Flutter and Dart packages'**
+  String get runtimeLicenses;
+
+  /// No description provided for @runtimeLicensesDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Review the open-source license notices generated for the Flutter and Dart packages included in this build.'**
+  String get runtimeLicensesDescription;
+
+  /// No description provided for @openRuntimeLicenses.
+  ///
+  /// In en, this message translates to:
+  /// **'View package licenses'**
+  String get openRuntimeLicenses;
+
+  /// No description provided for @licensePageLegalese.
+  ///
+  /// In en, this message translates to:
+  /// **'Lumina-owned code is GPL-3.0-only and is provided without warranty.'**
+  String get licensePageLegalese;
+
   /// No description provided for @memoryReset.
   ///
   /// In en, this message translates to:

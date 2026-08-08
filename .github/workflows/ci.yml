@@ -83,6 +83,19 @@ jobs:
         working-directory: android
         run: ./gradlew :app:testDebugUnitTest --no-daemon
 
+      - name: Verify release runtime dependency policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          report="${RUNNER_TEMP}/gradle-release-runtime-dependencies.txt"
+          (
+            cd android
+            ./gradlew :app:dependencies \
+              --configuration releaseRuntimeClasspath \
+              --no-daemon
+          ) | tee "${report}"
+          bash .github/scripts/check-runtime-dependencies.sh "${report}"
+
       - name: Build debug APK
         run: flutter build apk --debug --no-pub
 
@@ -218,8 +231,40 @@ jobs:
           bash .github/scripts/check-elf-alignment.sh "${apk}"
           sha256sum "${apk}"
 
+      - name: Verify release runtime dependency policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          report="${RUNNER_TEMP}/gradle-release-runtime-dependencies.txt"
+          (
+            cd android
+            ./gradlew :app:dependencies \
+              --configuration releaseRuntimeClasspath \
+              --no-daemon
+          ) | tee "${report}"
+          bash .github/scripts/check-runtime-dependencies.sh "${report}"
+
       - name: Remove release-signing material
         if: always()
         shell: bash
         run: |
           rm -f android/key.properties "${RUNNER_TEMP}/lumina-euicc-release.jks"
+
+      - name: Create exact-source release bundle
+        id: release_bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash .github/scripts/create-release-bundle.sh \
+            build/app/outputs/flutter-apk/app-release.apk \
+            dist/release \
+            "${GITHUB_SHA}"
+
+      - name: Upload signed APK and corresponding source
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ${{ steps.release_bundle.outputs.artifact-name }}
+          path: dist/release/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 90

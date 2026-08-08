@@ -194,6 +194,75 @@ class AppLocalizationsZh extends AppLocalizations {
       'Lumina eUICC — 对齐 EasyEUICC 功能的 Flutter 界面。\n核心 LPA 运行在 Android 原生桥接层。';
 
   @override
+  String get legalAndOpenSource => '法律与开源信息';
+
+  @override
+  String get legalAndOpenSourceDescription => '查看许可证、源代码、无担保声明及第三方声明';
+
+  @override
+  String get projectLicense => 'Lumina 许可证';
+
+  @override
+  String get projectLicenseDescription =>
+      'Lumina 自有代码是自由软件，仅依据 GNU 通用公共许可证第 3 版（GPL-3.0-only）授权。';
+
+  @override
+  String get noWarrantyTitle => '无担保声明';
+
+  @override
+  String get noWarrantyDescription =>
+      '在法律允许的范围内，Lumina 不提供任何担保。详情请参阅 GPL 第 3 版第 15、16 条。';
+
+  @override
+  String get sourceCode => '源代码';
+
+  @override
+  String get sourceCodeDescription => '项目源代码地址：';
+
+  @override
+  String get copySourceCodeUrl => '复制源代码地址';
+
+  @override
+  String get sourceCodeUrlCopied => '已复制源代码地址';
+
+  @override
+  String get thirdPartySoftware => '第三方软件';
+
+  @override
+  String get openEuiccAttribution => 'Peter Cai 及贡献者 · GPL-3.0-only。';
+
+  @override
+  String get lpacAttribution =>
+      'ESTKME TECHNOLOGY LIMITED 及 OpenEUICC 贡献者 · lpac-jni 与实际编译的 lpac euicc 组件采用 LGPL-2.1-only；其他随附 lpac 文件保留各自组件许可证。';
+
+  @override
+  String get cjsonAttribution => 'Dave Gamble 及 cJSON 贡献者 · MIT 许可证。';
+
+  @override
+  String get zxingAttribution =>
+      'JourneyApps、ZXing 作者及贡献者 · Apache License 2.0（Apache-2.0）。用于设备端二维码解码，不包含 Google ML Kit。';
+
+  @override
+  String get legalDocuments => '完整法律文件';
+
+  @override
+  String get legalDocumentsDescription =>
+      '完整许可证正文及归属声明随对应源码包提供，也可在源码仓库中查看：LICENSE、NOTICE.md、THIRD_PARTY_NOTICES.md、LICENSES_SCOPE.md，以及 third_party/OpenEUICC/ 下各组件的 LICENSE 文件。';
+
+  @override
+  String get runtimeLicenses => 'Flutter 与 Dart 软件包';
+
+  @override
+  String get runtimeLicensesDescription =>
+      '查看本构建所含 Flutter 与 Dart 软件包生成的开源许可证声明。';
+
+  @override
+  String get openRuntimeLicenses => '查看软件包许可证';
+
+  @override
+  String get licensePageLegalese => 'Lumina 自有代码采用 GPL-3.0-only 授权，且不提供任何担保。';
+
+  @override
   String get memoryReset => '重置存储';
 
   @override

@@ -196,6 +196,79 @@ class AppLocalizationsEn extends AppLocalizations {
       'Lumina eUICC — Flutter UI aligned with EasyEUICC capabilities.\nCore LPA runs in the Android native bridge.';
 
   @override
+  String get legalAndOpenSource => 'Legal & open source';
+
+  @override
+  String get legalAndOpenSourceDescription =>
+      'License, source code, warranty, and third-party notices';
+
+  @override
+  String get projectLicense => 'Lumina license';
+
+  @override
+  String get projectLicenseDescription =>
+      'Lumina-owned code is free software licensed under the GNU General Public License version 3 only.';
+
+  @override
+  String get noWarrantyTitle => 'No warranty';
+
+  @override
+  String get noWarrantyDescription =>
+      'Lumina is provided without any warranty, to the extent permitted by law. See sections 15 and 16 of GPL v3.';
+
+  @override
+  String get sourceCode => 'Source code';
+
+  @override
+  String get sourceCodeDescription => 'The project source is available at:';
+
+  @override
+  String get copySourceCodeUrl => 'Copy source code URL';
+
+  @override
+  String get sourceCodeUrlCopied => 'Source code URL copied';
+
+  @override
+  String get thirdPartySoftware => 'Third-party software';
+
+  @override
+  String get openEuiccAttribution =>
+      'Peter Cai and contributors · GPL-3.0-only.';
+
+  @override
+  String get lpacAttribution =>
+      'ESTKME TECHNOLOGY LIMITED and OpenEUICC contributors · lpac-jni and the compiled lpac euicc component are LGPL-2.1-only; other vendored lpac files retain their component-specific licenses.';
+
+  @override
+  String get cjsonAttribution =>
+      'Dave Gamble and cJSON contributors · MIT License.';
+
+  @override
+  String get zxingAttribution =>
+      'JourneyApps, ZXing authors, and contributors · Apache License 2.0 (Apache-2.0). Used for on-device QR decoding; Google ML Kit is not included.';
+
+  @override
+  String get legalDocuments => 'Complete legal documents';
+
+  @override
+  String get legalDocumentsDescription =>
+      'Complete license texts and attribution are provided in the corresponding-source bundle and repository: LICENSE, NOTICE.md, THIRD_PARTY_NOTICES.md, LICENSES_SCOPE.md, and the component LICENSE files under third_party/OpenEUICC/.';
+
+  @override
+  String get runtimeLicenses => 'Flutter and Dart packages';
+
+  @override
+  String get runtimeLicensesDescription =>
+      'Review the open-source license notices generated for the Flutter and Dart packages included in this build.';
+
+  @override
+  String get openRuntimeLicenses => 'View package licenses';
+
+  @override
+  String get licensePageLegalese =>
+      'Lumina-owned code is GPL-3.0-only and is provided without warranty.';
+
+  @override
   String get memoryReset => 'Memory reset';
 
   @override

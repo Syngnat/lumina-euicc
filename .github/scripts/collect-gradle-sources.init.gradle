@@ -1,0 +1,133 @@
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+import org.gradle.api.artifacts.component.ModuleComponentIdentifier
+import org.gradle.api.artifacts.result.ResolvedArtifactResult
+import org.gradle.api.artifacts.result.UnresolvedArtifactResult
+import org.gradle.api.artifacts.result.UnresolvedComponentResult
+import org.gradle.jvm.JvmLibrary
+import org.gradle.language.base.artifact.SourcesArtifact
+
+gradle.projectsEvaluated {
+    def appProject = gradle.rootProject.findProject(":app")
+    if (appProject == null) {
+        throw new GradleException("Android :app project was not found")
+    }
+
+    appProject.tasks.register("luminaCollectRuntimeDependencySources") {
+        doLast {
+            def outputValue = appProject.findProperty("luminaDependencyOutput")
+            if (outputValue == null || outputValue.toString().trim().isEmpty()) {
+                throw new GradleException("-PluminaDependencyOutput must be provided")
+            }
+
+            def outputDirectory = appProject.file(outputValue.toString())
+            if (outputDirectory.exists()) {
+                throw new GradleException("Refusing to overwrite ${outputDirectory}")
+            }
+            def artifactsDirectory = new File(outputDirectory, "artifacts")
+            def pomsDirectory = new File(outputDirectory, "poms")
+            artifactsDirectory.mkdirs()
+            pomsDirectory.mkdirs()
+
+            def runtime = appProject.configurations.getByName("releaseRuntimeClasspath")
+            def moduleIds = runtime.incoming.resolutionResult.allComponents
+                .collect { it.id }
+                .findAll { it instanceof ModuleComponentIdentifier }
+                .unique { it.displayName }
+                .sort { left, right -> left.displayName <=> right.displayName }
+
+            def artifactsByComponent = [:].withDefault { [] }
+            def failuresByComponent = [:].withDefault { [] }
+            def queryFailure = null
+            try {
+                def queryResult = appProject.dependencies.createArtifactResolutionQuery()
+                    .forComponents(moduleIds)
+                    .withArtifacts(JvmLibrary, SourcesArtifact)
+                    .execute()
+
+                queryResult.resolvedComponents.each { component ->
+                    component.getArtifacts(SourcesArtifact).each { artifact ->
+                        if (artifact instanceof ResolvedArtifactResult) {
+                            artifactsByComponent[component.id] << artifact.file
+                        } else if (artifact instanceof UnresolvedArtifactResult) {
+                            failuresByComponent[component.id] << artifact.failure.message
+                        }
+                    }
+                }
+                queryResult.components.findAll {
+                    it instanceof UnresolvedComponentResult
+                }.each { component ->
+                    failuresByComponent[component.id] << component.failure.message
+                }
+            } catch (Exception error) {
+                queryFailure = "${error.class.simpleName}: ${error.message}"
+            }
+
+            def manifest = new File(outputDirectory, "GRADLE_SOURCE_ARTIFACTS.tsv")
+            manifest.parentFile.mkdirs()
+            manifest.withWriter("UTF-8") { writer ->
+                writer.println("coordinate\tsource_status\tpom_status\tbundled_sources\tbundled_poms\tsource_candidates\tpom_candidates\tnote")
+                moduleIds.each { ModuleComponentIdentifier component ->
+                    def coordinate = "${component.group}:${component.module}:${component.version}"
+                    def groupPath = component.group.replace('.', '/')
+                    def sourceFile = "${component.module}-${component.version}-sources.jar"
+                    def pomFile = "${component.module}-${component.version}.pom"
+                    def sourceCandidates = [
+                        "https://dl.google.com/dl/android/maven2/${groupPath}/${component.module}/${component.version}/${sourceFile}",
+                        "https://repo1.maven.org/maven2/${groupPath}/${component.module}/${component.version}/${sourceFile}"
+                    ].join(" ")
+                    def pomCandidates = [
+                        "https://dl.google.com/dl/android/maven2/${groupPath}/${component.module}/${component.version}/${pomFile}",
+                        "https://repo1.maven.org/maven2/${groupPath}/${component.module}/${component.version}/${pomFile}"
+                    ].join(" ")
+                    def bundled = []
+                    def safeCoordinate = coordinate.replaceAll(/[^A-Za-z0-9_.+-]/, "-")
+                    artifactsByComponent[component].eachWithIndex { source, index ->
+                        def suffix = artifactsByComponent[component].size() > 1 ? "-${index + 1}" : ""
+                        def destination = new File(artifactsDirectory, "${safeCoordinate}${suffix}-sources.jar")
+                        Files.copy(source.toPath(), destination.toPath(), StandardCopyOption.REPLACE_EXISTING)
+                        bundled << "artifacts/${destination.name}"
+                    }
+                    def bundledPoms = []
+                    def cacheDirectory = new File(
+                        appProject.gradle.gradleUserHomeDir,
+                        "caches/modules-2/files-2.1/${component.group}/${component.module}/${component.version}"
+                    )
+                    if (cacheDirectory.isDirectory()) {
+                        def cachedPoms = appProject.fileTree(cacheDirectory) {
+                            include("**/*.pom")
+                        }.files.toList().sort { left, right ->
+                            left.absolutePath <=> right.absolutePath
+                        }
+                        cachedPoms.eachWithIndex { pom, index ->
+                            def suffix = index > 0 ? "-${index + 1}" : ""
+                            def destination = new File(pomsDirectory, "${safeCoordinate}${suffix}.pom")
+                            Files.copy(pom.toPath(), destination.toPath(), StandardCopyOption.REPLACE_EXISTING)
+                            bundledPoms << "poms/${destination.name}"
+                        }
+                    }
+                    def sourceStatus = bundled.isEmpty() ? "MISSING" : "BUNDLED"
+                    def pomStatus = bundledPoms.isEmpty() ? "MISSING" : "BUNDLED"
+                    def notes = []
+                    notes.addAll(failuresByComponent[component])
+                    if (queryFailure != null) {
+                        notes << queryFailure
+                    }
+                    def note = notes.join(" | ").replaceAll(/[\t\r\n]+/, " ")
+                    writer.println([
+                        coordinate,
+                        sourceStatus,
+                        pomStatus,
+                        bundled.join(" "),
+                        bundledPoms.join(" "),
+                        sourceCandidates,
+                        pomCandidates,
+                        note
+                    ].join("\t"))
+                }
+            }
+
+            println("Recorded ${moduleIds.size()} resolved Maven components in ${manifest}")
+        }
+    }
+}

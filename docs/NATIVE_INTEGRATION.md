@@ -53,22 +53,25 @@ Requirements:
 - CMake 3.22.1 for `jni` 1.0.3's `externalNativeBuild.cmake` path
 - The checked-in Gradle 8.9 wrapper
 
-Both native paths are active: OpenEUICC `lpac-jni` uses Gradle `externalNativeBuild.ndkBuild`, while pub package `jni` 1.0.3 invokes `externalNativeBuild.cmake`. The app and `mobile_scanner` 6.0.11 compile against SDK 36 and target SDK 35; vendored `app-common` and `lpac-jni` compile against SDK 35.
+Both native paths are active: OpenEUICC `lpac-jni` uses Gradle `externalNativeBuild.ndkBuild`, while pub package `jni` 1.0.3 invokes `externalNativeBuild.cmake`. The Lumina app compiles against SDK 36 and targets SDK 35; vendored `app-common` and `lpac-jni` compile against SDK 35.
 
 ## Verified local baseline (2026-08-08)
 
-On Windows with Flutter 3.44.9 and JDK 21 (CI remains pinned to JDK 17):
+On Windows with Flutter 3.44.9 and JDK 21 (CI remains pinned to JDK 17), after
+the legal-screen and native-ZXing changes:
 
 - `flutter analyze --no-pub`: no issues.
-- `flutter test --no-pub`: 16 tests passed.
-- `android/gradlew.bat :app:testDebugUnitTest`: 29 tests passed, 0 failures/errors.
-- `flutter build apk --debug --no-pub`: succeeded, including CMake builds for pub package `jni` and `ndkBuild` builds for vendored lpac-jni.
+- `flutter test --no-pub`: 21 tests passed.
+
+The native baseline was rerun after those changes:
+
+- `android/gradlew.bat :app:testDebugUnitTest`: 32 tests passed, 0 failures/errors, including the native-ZXing session tests.
 - `android/gradlew.bat :app:assembleRelease`: succeeded with the dedicated release key; `apksigner verify --verbose --print-certs` passed using APK Signature Scheme v2.
 - Release certificate SHA-256: `1F:C1:52:76:70:A8:0B:2B:B5:A8:1F:FC:D2:D8:D7:82:C2:AD:00:3A:21:8F:2C:AD:42:9D:30:08:81:07:D8:9F`.
 - APK metadata: `top.syngnat.lumina.euicc`, version `0.1.0` (`1`), compile SDK 36, target SDK 35, ABIs `arm64-v8a`, `armeabi-v7a`, and `x86_64`.
-- `zipalign -c -P 16 4` passed for debug and release APKs. Every arm64-v8a and x86_64 ELF `LOAD` segment has alignment of at least `2**14`; this includes vendored `liblpac-jni.so`.
+- `zipalign -c -P 16 4` passed for the release APK. Every arm64-v8a and x86_64 ELF `LOAD` segment has alignment of at least `2**14`; this includes vendored `liblpac-jni.so`.
 
-This is build/test evidence only. It does not validate OMAPI, ARA-M access, USB CCID, APDU traffic, profile mutation, or download behaviour on physical hardware. Consult GitHub Actions for the current pushed-commit result.
+This is build/test evidence only. It does not validate OMAPI, ARA-M access, USB CCID, APDU traffic, profile mutation, or download behaviour on physical hardware. Consult GitHub Actions for the exact pushed-commit result and current native verification.
 
 ## GitHub Actions and Android 16
 
@@ -77,7 +80,21 @@ This is build/test evidence only. It does not validate OMAPI, ARA-M access, USB 
 - `verify` runs for pull requests, `main` pushes, and manual dispatch. It enforces the lockfile, runs Dart analysis, Flutter and Kotlin tests, builds the debug APK, checks package/min/compile/target SDK metadata and ABIs, then checks both APK ZIP alignment and every 64-bit ELF `LOAD` segment for 16 KB compatibility.
 - `release` runs only after `verify` on a trusted `main` push or `main` manual dispatch. Its `release-signing` GitHub Environment is restricted to `main` and contains the four signing secrets. The job builds with the dedicated key and verifies v2 signing, one signer, the expected certificate fingerprint, APK metadata, and 16 KB compatibility.
 
-The workflow deliberately does not upload an APK/AAB artifact while project licensing and corresponding-source packaging remain unresolved. GitHub-hosted runners also cannot prove OPPO/ColorOS OMAPI or ARA-M behaviour. With the phone connected, confirm its kernel page size separately:
+After verification, a trusted `main` release publishes one artifact containing
+the signed APK, `lumina-euicc-source-<full-commit-sha>.zip`,
+`lumina-euicc-dependency-sources-<full-commit-sha>.zip`, `SOURCE_INFO.txt`,
+`SHA256SUMS`, Flutter/Gradle dependency inventories and source manifests, and
+root/nested license materials. The dependency archive contains complete hosted
+Pub package trees plus available Maven source JARs and cached POMs; the manifest
+marks unavailable Maven sources and records candidate URLs. The source metadata
+records the repository, full commit and commit URL, package/version, build
+toolchain, and exact Flutter framework/engine source revisions. The tracked
+`third_party/OpenEUICC` directory in that exact Lumina commit is the vendored
+source used by the APK; this repository does not record a separate upstream
+OpenEUICC revision.
+
+GitHub-hosted runners cannot prove OPPO/ColorOS OMAPI or ARA-M behaviour. With
+the phone connected, confirm its kernel page size separately:
 
 ```powershell
 adb shell getconf PAGE_SIZE
@@ -89,10 +106,16 @@ The dedicated Lumina certificate has ARA-M SHA-1 fingerprint `10:0C:A7:FD:2C:E4:
 
 ## License
 
+- Lumina-owned code is Copyright (C) 2026 Syngnat and licensed
+  GPL-3.0-only under the root `LICENSE`; `LICENSES_SCOPE.md` defines the scope.
 - `third_party/OpenEUICC/LICENSE` is GPL-3.0-only.
-- lpac-jni and cJSON retain their own bundled upstream licenses; they must not all be described as GPL-3.0-only.
-- The repository has no top-level license for Lumina-owned code. `NOTICE.md` records attribution but does not by itself grant a project license.
-- A binary linking OpenEUICC code must not be distributed until the project license, complete corresponding source, notices, and other applicable GPL-3.0 obligations have been reviewed and satisfied.
+- lpac-jni, lpac components, cJSON, and registry dependencies retain their own
+  bundled or upstream licenses; they must not all be described as
+  GPL-3.0-only. See `THIRD_PARTY_NOTICES.md` and nested license files.
+- CI distribution keeps the APK, exact-commit project source, dependency source
+  archive/manifests, dependency inventories, notices, source metadata, and
+  checksums in one artifact. Redistribution must preserve that
+  corresponding-source and notice set.
 
 ## Remaining gaps (honest)
 
@@ -103,4 +126,7 @@ The dedicated Lumina certificate has ARA-M SHA-1 fingerprint `10:0C:A7:FD:2C:E4:
 - Flutter 3.44.9 warns that Gradle 8.9, AGP 8.7.0, and Kotlin 2.0.21 are nearing the end of its support window; migrate them together only after checking vendored OpenEUICC compatibility.
 - Privileged internal-eSIM path (OpenEUICC system app) is intentionally out of scope — same as EasyEUICC unprivileged.
 - Real-device validation still needs your phone + ARA-M card / USB reader.
-- Release signing is wired to the dedicated local key; secure backup/recovery and license-compliant distribution packaging still remain.
+- Release signing is wired to the dedicated project key; secure backup and
+  recovery of that key remain an owner responsibility. CI now packages the APK
+  with matching source and license materials, and future dependency changes
+  must keep those materials current.

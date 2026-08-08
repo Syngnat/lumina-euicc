@@ -10,6 +10,10 @@ class FakeEuiccBridge extends EuiccBridge {
   int downloadCalls = 0;
   int cancelDownloadCalls = 0;
   int confirmDownloadCalls = 0;
+  int scanQrCalls = 0;
+  String? scanQrResult;
+  Object? scanQrError;
+  Future<String?>? scanQrFuture;
   String nextTaskId = 'task-1';
   Future<void>? downloadResult;
   Stream<DownloadTaskEvent>? taskEventsOverride;
@@ -29,6 +33,16 @@ class FakeEuiccBridge extends EuiccBridge {
   @override
   Stream<DownloadTaskEvent> get taskEvents =>
       taskEventsOverride ?? taskEventsController.stream;
+
+  @override
+  Future<String?> scanQr() async {
+    scanQrCalls++;
+    final error = scanQrError;
+    if (error != null) throw error;
+    final future = scanQrFuture;
+    if (future != null) return future;
+    return scanQrResult;
+  }
 
   @override
   Future<List<EuiccChannelInfo>> listChannels() async => channels;

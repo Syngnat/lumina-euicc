@@ -23,6 +23,8 @@ class EuiccBridge {
         return DownloadTaskEvent.fromMap(map);
       });
 
+  Future<String?> scanQr() => _methods.invokeMethod<String>('scanQr');
+
   Future<List<EuiccChannelInfo>> listChannels() async {
     final raw = await _methods.invokeMethod<Map>('listChannels');
     final list = (raw?['channels'] as List?) ?? const [];

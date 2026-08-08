@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../l10n/l10n.dart';
 import '../services/providers.dart';
+import 'legal_page.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -15,9 +16,15 @@ class SettingsPage extends ConsumerWidget {
       body: ListView(
         children: [
           ListTile(
-            title: Text(context.l10n.about),
-            subtitle: Text(context.l10n.aboutDescription),
-            isThreeLine: true,
+            leading: const Icon(Icons.policy_outlined),
+            title: Text(context.l10n.legalAndOpenSource),
+            subtitle: Text(context.l10n.legalAndOpenSourceDescription),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const LegalPage()),
+              );
+            },
           ),
           const Divider(),
           ListTile(

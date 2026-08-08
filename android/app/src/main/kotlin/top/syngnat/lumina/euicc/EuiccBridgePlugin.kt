@@ -1,12 +1,15 @@
 package top.syngnat.lumina.euicc
 
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.se.omapi.Reader
 import android.util.Log
+import com.journeyapps.barcodescanner.ScanIntentResult
+import com.journeyapps.barcodescanner.ScanOptions
 import im.angry.openeuicc.core.DefaultEuiccChannelManager
 import im.angry.openeuicc.core.EuiccChannel
 import im.angry.openeuicc.core.EuiccChannelManager
@@ -20,9 +23,12 @@ import im.angry.openeuicc.util.operational
 import im.angry.openeuicc.util.parseIsdrAidList
 import im.angry.openeuicc.util.switchProfile
 import io.flutter.embedding.engine.plugins.FlutterPlugin
+import io.flutter.embedding.engine.plugins.activity.ActivityAware
+import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import io.flutter.plugin.common.PluginRegistry
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -46,17 +52,24 @@ import java.util.concurrent.atomic.AtomicReference
  *
  * OpenEUICC is GPL-3 only; this file is part of the same derivative work.
  */
-class EuiccBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventChannel.StreamHandler {
+class EuiccBridgePlugin :
+    FlutterPlugin,
+    ActivityAware,
+    MethodChannel.MethodCallHandler,
+    EventChannel.StreamHandler,
+    PluginRegistry.ActivityResultListener {
     companion object {
         private const val TAG = "LuminaEuiccBridge"
         private const val METHOD = "top.syngnat.lumina.euicc/bridge"
         private const val EVENTS = "top.syngnat.lumina.euicc/task_events"
+        private const val QR_SCAN_REQUEST_CODE = 0x4C51
     }
 
     private lateinit var appContext: Context
     private lateinit var methodChannel: MethodChannel
     private lateinit var eventChannel: EventChannel
     private var eventSink: EventChannel.EventSink? = null
+    private var activityBinding: ActivityPluginBinding? = null
     private val mainHandler = Handler(Looper.getMainLooper())
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
@@ -66,6 +79,7 @@ class EuiccBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventC
     }
 
     private val activeDownload = AtomicReference<DownloadTaskSession?>(null)
+    private val qrScanSession = QrScanSession()
     private val channelDiscovery by lazy {
         BridgeChannelDiscovery(
             discoverRealChannels = ::discoverRealChannels,
@@ -103,6 +117,7 @@ class EuiccBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventC
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        detachActivity(interruptScan = true)
         methodChannel.setMethodCallHandler(null)
         eventChannel.setStreamHandler(null)
         activeDownload.getAndSet(null)?.cancel()
@@ -111,6 +126,31 @@ class EuiccBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventC
         } catch (_: Exception) {
         }
         scope.cancel()
+    }
+
+    override fun onAttachedToActivity(binding: ActivityPluginBinding) {
+        attachActivity(binding)
+    }
+
+    override fun onDetachedFromActivityForConfigChanges() {
+        detachActivity(interruptScan = false)
+    }
+
+    override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
+        attachActivity(binding)
+    }
+
+    override fun onDetachedFromActivity() {
+        detachActivity(interruptScan = true)
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
+        if (requestCode != QR_SCAN_REQUEST_CODE) return false
+        val contents = ScanIntentResult.parseActivityResult(resultCode, data)
+            .contents
+            ?.takeIf(String::isNotBlank)
+        qrScanSession.complete(contents)
+        return true
     }
 
     override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
@@ -123,6 +163,7 @@ class EuiccBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventC
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
+            "scanQr" -> startQrScan(result)
             "listChannels" -> async(result) { listChannels() }
             "listProfiles" -> async(result) {
                 listProfiles(
@@ -360,6 +401,47 @@ class EuiccBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventC
             EuiccChannel.SecureElementId.createFromInt(request.seId),
         ) { ch ->
             ch.lpa.downloadProfile(input, ProfileDownloadCallback { state -> session.onLpaState(state) })
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun startQrScan(result: MethodChannel.Result) {
+        val activity = activityBinding?.activity
+        if (activity == null) {
+            result.error("qr_scan_unavailable", "QR scanner requires a foreground activity", null)
+            return
+        }
+        if (!qrScanSession.begin(result)) {
+            result.error("qr_scan_busy", "A QR scan is already running", null)
+            return
+        }
+        try {
+            val options = ScanOptions()
+                .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                .setOrientationLocked(false)
+                .setBeepEnabled(false)
+                .setBarcodeImageEnabled(false)
+            activity.startActivityForResult(
+                options.createScanIntent(activity),
+                QR_SCAN_REQUEST_CODE,
+            )
+        } catch (error: Exception) {
+            Log.e(TAG, "Unable to start QR scanner", error)
+            qrScanSession.fail("qr_scan_failed", "Unable to start QR scanner")
+        }
+    }
+
+    private fun attachActivity(binding: ActivityPluginBinding) {
+        activityBinding?.removeActivityResultListener(this)
+        activityBinding = binding
+        binding.addActivityResultListener(this)
+    }
+
+    private fun detachActivity(interruptScan: Boolean) {
+        activityBinding?.removeActivityResultListener(this)
+        activityBinding = null
+        if (interruptScan) {
+            qrScanSession.fail("qr_scan_interrupted", "QR scan was interrupted")
         }
     }
 

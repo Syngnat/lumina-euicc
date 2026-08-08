@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../l10n/l10n.dart';
 import '../models/euicc_models.dart';
@@ -25,6 +24,7 @@ class _DownloadPageState extends ConsumerState<DownloadPage> {
   StreamSubscription<DownloadTaskEvent>? _sub;
   DownloadTaskEvent? _lastEvent;
   bool _busy = false;
+  bool _scanning = false;
   String? _error;
   String? _activeTaskId;
   Object? _pendingTaskError;
@@ -204,11 +204,20 @@ class _DownloadPageState extends ConsumerState<DownloadPage> {
   }
 
   Future<void> _scanQr() async {
-    final code = await Navigator.of(context).push<String>(
-      MaterialPageRoute(builder: (_) => const _QrScanPage()),
-    );
-    if (mounted && code != null && code.isNotEmpty) {
-      _codeController.text = code;
+    if (_scanning) return;
+    setState(() {
+      _scanning = true;
+      _error = null;
+    });
+    try {
+      final code = await _bridge.scanQr();
+      if (mounted && code != null && code.isNotEmpty) {
+        _codeController.text = code;
+      }
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
+    } finally {
+      if (mounted) setState(() => _scanning = false);
     }
   }
 
@@ -245,9 +254,15 @@ class _DownloadPageState extends ConsumerState<DownloadPage> {
               labelText: context.l10n.activationCodeLabel,
               hintText: context.l10n.activationCodeHint,
               suffixIcon: IconButton(
+                key: const Key('scanQrButton'),
                 tooltip: context.l10n.scanQr,
-                onPressed: _busy ? null : _scanQr,
-                icon: const Icon(Icons.qr_code_scanner),
+                onPressed: _busy || _scanning ? null : _scanQr,
+                icon: _scanning
+                    ? const SizedBox.square(
+                        dimension: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.qr_code_scanner),
               ),
             ),
             minLines: 2,
@@ -313,35 +328,6 @@ class _DownloadPageState extends ConsumerState<DownloadPage> {
             ),
           ],
         ],
-      ),
-    );
-  }
-}
-
-class _QrScanPage extends StatefulWidget {
-  const _QrScanPage();
-
-  @override
-  State<_QrScanPage> createState() => _QrScanPageState();
-}
-
-class _QrScanPageState extends State<_QrScanPage> {
-  bool _handled = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(context.l10n.scanQr)),
-      body: MobileScanner(
-        onDetect: (capture) {
-          if (_handled) return;
-          final barcodes = capture.barcodes;
-          if (barcodes.isEmpty) return;
-          final raw = barcodes.first.rawValue;
-          if (raw == null || raw.isEmpty) return;
-          _handled = true;
-          Navigator.of(context).pop(raw);
-        },
       ),
     );
   }
