@@ -219,6 +219,40 @@ void main() {
     expect(page.channel.key, channel.key);
   });
 
+  testWidgets('a profile keep-alive reminder reaches the native scheduler',
+      (tester) async {
+    const channel = EuiccChannelInfo(
+      slotId: 1,
+      portId: 0,
+      seId: '0',
+      label: 'Phone slot 1',
+      type: 'omapi',
+    );
+    final bridge = FakeEuiccBridge()
+      ..channels = const [channel]
+      ..profiles = const [_profile];
+    addTearDown(bridge.dispose);
+
+    await _pumpHome(tester, bridge);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(PopupMenuButton<String>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Keep-alive reminder'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(DatePickerDialog), findsOneWidget);
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+    expect(find.byType(TimePickerDialog), findsOneWidget);
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+
+    expect(bridge.scheduleReminderCalls, 1);
+    expect(
+        bridge.reminders[_profile.iccid]?.at.isAfter(DateTime.now()), isTrue);
+    expect(find.text('Keep-alive reminder saved'), findsOneWidget);
+  });
+
   testWidgets('the add-profile FAB waits for the initial channel probe',
       (tester) async {
     const channel = EuiccChannelInfo(

@@ -1,5 +1,6 @@
 package top.syngnat.lumina.euicc
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -57,12 +58,14 @@ class EuiccBridgePlugin :
     ActivityAware,
     MethodChannel.MethodCallHandler,
     EventChannel.StreamHandler,
-    PluginRegistry.ActivityResultListener {
+    PluginRegistry.ActivityResultListener,
+    PluginRegistry.RequestPermissionsResultListener {
     companion object {
         private const val TAG = "LuminaEuiccBridge"
         private const val METHOD = "top.syngnat.lumina.euicc/bridge"
         private const val EVENTS = "top.syngnat.lumina.euicc/task_events"
         private const val QR_SCAN_REQUEST_CODE = 0x4C51
+        private const val NOTIFICATION_PERMISSION_REQUEST_CODE = 0x4C52
     }
 
     private lateinit var appContext: Context
@@ -75,12 +78,14 @@ class EuiccBridgePlugin :
 
     private val appContainer by lazy { DefaultAppContainer(appContext) }
     private val appUpdateSupport by lazy { AppUpdateSupport(appContext) }
+    private val profileReminderSupport by lazy { ProfileReminderSupport(appContext) }
     private val simToolkitSupport = SimToolkitSupport()
     private val manager: EuiccChannelManager by lazy {
         DefaultEuiccChannelManager(appContainer, appContext)
     }
 
     private val activeDownload = AtomicReference<DownloadTaskSession?>(null)
+    private val pendingNotificationPermission = AtomicReference<MethodChannel.Result?>(null)
     private val qrScanSession = QrScanSession()
     private val profileSwitchCoordinator = BridgeProfileSwitchCoordinator()
     private val channelDiscovery by lazy {
@@ -117,6 +122,7 @@ class EuiccBridgePlugin :
         eventChannel = EventChannel(binding.binaryMessenger, EVENTS)
         methodChannel.setMethodCallHandler(this)
         eventChannel.setStreamHandler(this)
+        profileReminderSupport.restoreAll()
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
@@ -153,6 +159,19 @@ class EuiccBridgePlugin :
             .contents
             ?.takeIf(String::isNotBlank)
         qrScanSession.complete(contents)
+        return true
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ): Boolean {
+        if (requestCode != NOTIFICATION_PERMISSION_REQUEST_CODE) return false
+        val result = pendingNotificationPermission.getAndSet(null) ?: return true
+        val granted = profileReminderSupport.canPostNotifications()
+        if (granted) profileReminderSupport.restoreAll()
+        result.success(mapOf("granted" to granted))
         return true
     }
 
@@ -193,6 +212,40 @@ class EuiccBridgePlugin :
                 } catch (e: Exception) {
                     Log.e(TAG, "opening install permission settings failed", e)
                     result.error("update_settings_unavailable", "Install settings are unavailable", null)
+                }
+            }
+            "getProfileReminder" -> async(result) {
+                profileReminderSupport.get(call.str("iccid"))
+                    ?: emptyMap<String, Any>()
+            }
+            "scheduleProfileReminder" -> async(result) {
+                profileReminderSupport.schedule(
+                    iccid = call.str("iccid"),
+                    profileName = call.str("profileName"),
+                    triggerAtMillis = call.long("triggerAtMillis"),
+                )
+            }
+            "cancelProfileReminder" -> async(result) {
+                profileReminderSupport.cancel(call.str("iccid"))
+                mapOf("ok" to true)
+            }
+            "renameProfileReminder" -> async(result) {
+                profileReminderSupport.rename(call.str("iccid"), call.str("profileName"))
+                mapOf("ok" to true)
+            }
+            "requestReminderNotificationPermission" ->
+                requestReminderNotificationPermission(result)
+            "openExactAlarmSettings" -> {
+                try {
+                    profileReminderSupport.openExactAlarmSettings()
+                    result.success(mapOf("ok" to true))
+                } catch (error: Exception) {
+                    Log.e(TAG, "opening exact alarm settings failed", error)
+                    result.error(
+                        "reminder_settings_unavailable",
+                        "Alarm settings are unavailable",
+                        null,
+                    )
                 }
             }
             "listChannels" -> async(result) { listChannels() }
@@ -501,16 +554,56 @@ class EuiccBridgePlugin :
 
     private fun attachActivity(binding: ActivityPluginBinding) {
         activityBinding?.removeActivityResultListener(this)
+        activityBinding?.removeRequestPermissionsResultListener(this)
         activityBinding = binding
         binding.addActivityResultListener(this)
+        binding.addRequestPermissionsResultListener(this)
     }
 
     private fun detachActivity(interruptScan: Boolean) {
         activityBinding?.removeActivityResultListener(this)
+        activityBinding?.removeRequestPermissionsResultListener(this)
         activityBinding = null
         if (interruptScan) {
             qrScanSession.fail("qr_scan_interrupted", "QR scan was interrupted")
+            pendingNotificationPermission.getAndSet(null)?.error(
+                "notification_permission_interrupted",
+                "Notification permission request was interrupted",
+                null,
+            )
         }
+    }
+
+    private fun requestReminderNotificationPermission(result: MethodChannel.Result) {
+        if (profileReminderSupport.canPostNotifications()) {
+            result.success(mapOf("granted" to true))
+            return
+        }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            result.success(mapOf("granted" to true))
+            return
+        }
+        val activity = activityBinding?.activity
+        if (activity == null) {
+            result.error(
+                "notification_permission_unavailable",
+                "Notification permission requires a foreground activity",
+                null,
+            )
+            return
+        }
+        if (!pendingNotificationPermission.compareAndSet(null, result)) {
+            result.error(
+                "notification_permission_busy",
+                "A notification permission request is already running",
+                null,
+            )
+            return
+        }
+        activity.requestPermissions(
+            arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+            NOTIFICATION_PERMISSION_REQUEST_CODE,
+        )
     }
 
     private fun runMockDownload(session: DownloadTaskSession) {

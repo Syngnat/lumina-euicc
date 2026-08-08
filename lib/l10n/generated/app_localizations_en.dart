@@ -607,4 +607,57 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get updateInstallerLaunched =>
       'The verified APK was handed to Android\'s system installer. Confirm the update there.';
+
+  @override
+  String get keepAliveReminder => 'Keep-alive reminder';
+
+  @override
+  String get editKeepAliveReminder => 'Edit reminder';
+
+  @override
+  String get cancelReminder => 'Cancel reminder';
+
+  @override
+  String reminderScheduledAt(String date, String time) {
+    return 'Keep-alive reminder set for $date at $time';
+  }
+
+  @override
+  String get selectReminderDate => 'Select keep-alive date';
+
+  @override
+  String get selectReminderTime => 'Select reminder time';
+
+  @override
+  String get reminderMustBeFuture => 'Choose a future date and time.';
+
+  @override
+  String get reminderSaved => 'Keep-alive reminder saved';
+
+  @override
+  String get reminderCancelled => 'Keep-alive reminder cancelled';
+
+  @override
+  String get reminderScheduleFailed =>
+      'The keep-alive reminder could not be updated.';
+
+  @override
+  String get reminderNotificationsDeniedTitle => 'Notifications are disabled';
+
+  @override
+  String get reminderNotificationsDeniedDescription =>
+      'The date was saved, but Android will not show the reminder until notifications are allowed for Lumina.';
+
+  @override
+  String get exactAlarmUnavailableTitle => 'Exact alarm access is off';
+
+  @override
+  String get exactAlarmUnavailableDescription =>
+      'The reminder is scheduled, but Android may delay it. Allow Alarms & reminders for a more precise alert.';
+
+  @override
+  String get openAlarmSettings => 'Open alarm settings';
+
+  @override
+  String get close => 'Close';
 }

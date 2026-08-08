@@ -160,5 +160,27 @@
   "updateCheckFailed": "无法检查更新，请确认网络连接后重试。",
   "updateDownloadFailed": "更新下载失败，或下载文件与发布内容不一致。",
   "updateInstallFailed": "Android 无法校验或打开此更新，当前应用未被修改。",
-  "updateInstallerLaunched": "已将校验通过的 APK 交给 Android 系统安装器，请在系统界面确认更新。"
+  "updateInstallerLaunched": "已将校验通过的 APK 交给 Android 系统安装器，请在系统界面确认更新。",
+  "keepAliveReminder": "保号提醒",
+  "editKeepAliveReminder": "修改提醒",
+  "cancelReminder": "取消提醒",
+  "reminderScheduledAt": "保号提醒已设置为 {date} {time}",
+  "@reminderScheduledAt": {
+    "placeholders": {
+      "date": {"type": "String"},
+      "time": {"type": "String"}
+    }
+  },
+  "selectReminderDate": "选择保号日期",
+  "selectReminderTime": "选择提醒时间",
+  "reminderMustBeFuture": "请选择未来的日期和时间。",
+  "reminderSaved": "已保存保号提醒",
+  "reminderCancelled": "已取消保号提醒",
+  "reminderScheduleFailed": "无法更新保号提醒。",
+  "reminderNotificationsDeniedTitle": "通知权限未开启",
+  "reminderNotificationsDeniedDescription": "日期已经保存，但在允许 Lumina 发送通知之前，Android 不会显示保号提醒。",
+  "exactAlarmUnavailableTitle": "精确闹钟权限未开启",
+  "exactAlarmUnavailableDescription": "提醒已经安排，但 Android 可能延迟触发。开启“闹钟和提醒”权限后可获得更准时的通知。",
+  "openAlarmSettings": "打开闹钟设置",
+  "close": "关闭"
 }

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../l10n/l10n.dart';
 import '../models/euicc_models.dart';
+import '../models/profile_reminder.dart';
 import '../services/providers.dart';
 import '../widgets/profile_card.dart';
 import 'compatibility_page.dart';
@@ -146,8 +147,13 @@ class HomePage extends ConsumerWidget {
                     itemCount: profiles.length,
                     itemBuilder: (context, index) {
                       final p = profiles[index];
+                      final reminderAsync =
+                          ref.watch(profileReminderProvider(p.iccid));
+                      final reminder = reminderAsync.valueOrNull;
                       return ProfileCard(
                         profile: p,
+                        reminder: reminder,
+                        reminderLoading: reminderAsync.isLoading,
                         onEnable: selected == null
                             ? null
                             : () => _switch(ref, selected, p, true),
@@ -170,6 +176,17 @@ class HomePage extends ConsumerWidget {
                                   selected,
                                   p,
                                 ),
+                        onSetReminder: reminderAsync.isLoading
+                            ? null
+                            : () => _setReminder(
+                                  context,
+                                  ref,
+                                  p,
+                                  reminder,
+                                ),
+                        onCancelReminder: reminder == null
+                            ? null
+                            : () => _cancelReminder(context, ref, p),
                       );
                     },
                   ),
@@ -326,6 +343,15 @@ class HomePage extends ConsumerWidget {
       seId: channel.seId,
       iccid: profile.iccid,
     );
+    try {
+      await bridge.cancelProfileReminder(profile.iccid);
+    } catch (error) {
+      debugPrint(
+        '[LuminaReminder] cleanup_after_delete_failed '
+        'errorType=${error.runtimeType}',
+      );
+    }
+    ref.invalidate(profileReminderProvider(profile.iccid));
     ref.invalidate(profilesProvider);
   }
 
@@ -365,7 +391,140 @@ class HomePage extends ConsumerWidget {
       iccid: profile.iccid,
       name: name,
     );
+    try {
+      await bridge.renameProfileReminder(
+        iccid: profile.iccid,
+        profileName: name,
+      );
+    } catch (error) {
+      debugPrint(
+        '[LuminaReminder] rename_sync_failed errorType=${error.runtimeType}',
+      );
+    }
     ref.invalidate(profilesProvider);
+  }
+
+  Future<void> _setReminder(
+    BuildContext context,
+    WidgetRef ref,
+    EuiccProfile profile,
+    ProfileReminder? existing,
+  ) async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final fallback = DateTime(now.year, now.month, now.day + 1, 9);
+    final initial = existing?.at.isAfter(now) == true ? existing!.at : fallback;
+    final date = await showDatePicker(
+      context: context,
+      initialDate: DateTime(initial.year, initial.month, initial.day),
+      firstDate: today,
+      lastDate: DateTime(now.year + 20, 12, 31),
+      helpText: context.l10n.selectReminderDate,
+    );
+    if (date == null || !context.mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(initial),
+      helpText: context.l10n.selectReminderTime,
+    );
+    if (time == null || !context.mounted) return;
+
+    final at =
+        DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    if (!at.isAfter(DateTime.now())) {
+      _showReminderMessage(context, context.l10n.reminderMustBeFuture);
+      return;
+    }
+
+    final bridge = ref.read(euiccBridgeProvider);
+    try {
+      try {
+        await bridge.requestReminderNotificationPermission();
+      } catch (error) {
+        debugPrint(
+          '[LuminaReminder] notification_permission_failed '
+          'errorType=${error.runtimeType}',
+        );
+      }
+      final scheduled = await bridge.scheduleProfileReminder(
+        iccid: profile.iccid,
+        profileName: profile.name,
+        at: at,
+      );
+      ref.invalidate(profileReminderProvider(profile.iccid));
+      if (!context.mounted) return;
+      _showReminderMessage(context, context.l10n.reminderSaved);
+      if (!scheduled.notificationPermissionGranted) {
+        await showDialog<void>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text(context.l10n.reminderNotificationsDeniedTitle),
+            content: Text(context.l10n.reminderNotificationsDeniedDescription),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(context.l10n.close),
+              ),
+            ],
+          ),
+        );
+      } else if (!scheduled.exact) {
+        final openSettings = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text(context.l10n.exactAlarmUnavailableTitle),
+            content: Text(context.l10n.exactAlarmUnavailableDescription),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text(context.l10n.cancel),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: Text(context.l10n.openAlarmSettings),
+              ),
+            ],
+          ),
+        );
+        if (openSettings == true) {
+          await bridge.openExactAlarmSettings();
+        }
+      }
+    } catch (error) {
+      debugPrint(
+        '[LuminaReminder] schedule_failed errorType=${error.runtimeType}',
+      );
+      if (context.mounted) {
+        _showReminderMessage(context, context.l10n.reminderScheduleFailed);
+      }
+    }
+  }
+
+  Future<void> _cancelReminder(
+    BuildContext context,
+    WidgetRef ref,
+    EuiccProfile profile,
+  ) async {
+    try {
+      await ref.read(euiccBridgeProvider).cancelProfileReminder(profile.iccid);
+      ref.invalidate(profileReminderProvider(profile.iccid));
+      if (context.mounted) {
+        _showReminderMessage(context, context.l10n.reminderCancelled);
+      }
+    } catch (error) {
+      debugPrint(
+        '[LuminaReminder] cancel_failed errorType=${error.runtimeType}',
+      );
+      if (context.mounted) {
+        _showReminderMessage(context, context.l10n.reminderScheduleFailed);
+      }
+    }
+  }
+
+  void _showReminderMessage(BuildContext context, String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 }
 

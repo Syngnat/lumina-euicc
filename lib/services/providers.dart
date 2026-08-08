@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/euicc_models.dart';
+import '../models/profile_reminder.dart';
 import 'app_update_service.dart';
 import 'euicc_bridge.dart';
 
@@ -29,6 +30,11 @@ final selectedChannelProvider = Provider<EuiccChannelInfo?>((ref) {
   final channels = ref.watch(channelsProvider).valueOrNull;
   final selectedKey = ref.watch(selectedChannelKeyProvider);
   return _currentChannel(channels ?? const [], selectedKey);
+});
+
+final profileReminderProvider =
+    FutureProvider.autoDispose.family<ProfileReminder?, String>((ref, iccid) {
+  return ref.watch(euiccBridgeProvider).getProfileReminder(iccid);
 });
 
 final profilesProvider =

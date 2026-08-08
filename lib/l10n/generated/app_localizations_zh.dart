@@ -583,4 +583,56 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get updateInstallerLaunched =>
       '已将校验通过的 APK 交给 Android 系统安装器，请在系统界面确认更新。';
+
+  @override
+  String get keepAliveReminder => '保号提醒';
+
+  @override
+  String get editKeepAliveReminder => '修改提醒';
+
+  @override
+  String get cancelReminder => '取消提醒';
+
+  @override
+  String reminderScheduledAt(String date, String time) {
+    return '保号提醒已设置为 $date $time';
+  }
+
+  @override
+  String get selectReminderDate => '选择保号日期';
+
+  @override
+  String get selectReminderTime => '选择提醒时间';
+
+  @override
+  String get reminderMustBeFuture => '请选择未来的日期和时间。';
+
+  @override
+  String get reminderSaved => '已保存保号提醒';
+
+  @override
+  String get reminderCancelled => '已取消保号提醒';
+
+  @override
+  String get reminderScheduleFailed => '无法更新保号提醒。';
+
+  @override
+  String get reminderNotificationsDeniedTitle => '通知权限未开启';
+
+  @override
+  String get reminderNotificationsDeniedDescription =>
+      '日期已经保存，但在允许 Lumina 发送通知之前，Android 不会显示保号提醒。';
+
+  @override
+  String get exactAlarmUnavailableTitle => '精确闹钟权限未开启';
+
+  @override
+  String get exactAlarmUnavailableDescription =>
+      '提醒已经安排，但 Android 可能延迟触发。开启“闹钟和提醒”权限后可获得更准时的通知。';
+
+  @override
+  String get openAlarmSettings => '打开闹钟设置';
+
+  @override
+  String get close => '关闭';
 }

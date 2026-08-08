@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:lumina_euicc/models/euicc_models.dart';
+import 'package:lumina_euicc/models/profile_reminder.dart';
 import 'package:lumina_euicc/services/euicc_bridge.dart';
 
 class FakeEuiccBridge extends EuiccBridge {
@@ -12,6 +13,11 @@ class FakeEuiccBridge extends EuiccBridge {
   int confirmDownloadCalls = 0;
   int scanQrCalls = 0;
   int openSimToolkitCalls = 0;
+  int scheduleReminderCalls = 0;
+  int cancelReminderCalls = 0;
+  bool reminderNotificationPermissionGranted = true;
+  bool reminderExact = true;
+  final Map<String, ProfileReminder> reminders = {};
   bool openSimToolkitResult = true;
   Object? openSimToolkitError;
   String? scanQrResult;
@@ -54,6 +60,46 @@ class FakeEuiccBridge extends EuiccBridge {
     if (error != null) throw error;
     return openSimToolkitResult;
   }
+
+  @override
+  Future<ProfileReminder?> getProfileReminder(String iccid) async =>
+      reminders[iccid];
+
+  @override
+  Future<ProfileReminder> scheduleProfileReminder({
+    required String iccid,
+    required String profileName,
+    required DateTime at,
+  }) async {
+    scheduleReminderCalls++;
+    final reminder = ProfileReminder(
+      at: at,
+      exact: reminderExact,
+      notificationPermissionGranted: reminderNotificationPermissionGranted,
+      exactAlarmPermissionGranted: reminderExact,
+    );
+    reminders[iccid] = reminder;
+    return reminder;
+  }
+
+  @override
+  Future<void> cancelProfileReminder(String iccid) async {
+    cancelReminderCalls++;
+    reminders.remove(iccid);
+  }
+
+  @override
+  Future<void> renameProfileReminder({
+    required String iccid,
+    required String profileName,
+  }) async {}
+
+  @override
+  Future<bool> requestReminderNotificationPermission() async =>
+      reminderNotificationPermissionGranted;
+
+  @override
+  Future<void> openExactAlarmSettings() async {}
 
   @override
   Future<List<EuiccChannelInfo>> listChannels() async => channels;

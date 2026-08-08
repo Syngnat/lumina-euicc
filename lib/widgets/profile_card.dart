@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../l10n/l10n.dart';
 import '../models/euicc_models.dart';
 import '../models/profile_presentation.dart';
+import '../models/profile_reminder.dart';
 
 class ProfileCard extends StatelessWidget {
   const ProfileCard({
@@ -13,6 +14,10 @@ class ProfileCard extends StatelessWidget {
     this.onDisable,
     this.onDelete,
     this.onRename,
+    this.onSetReminder,
+    this.reminder,
+    this.reminderLoading = false,
+    this.onCancelReminder,
   });
 
   final EuiccProfile profile;
@@ -20,6 +25,10 @@ class ProfileCard extends StatelessWidget {
   final VoidCallback? onDisable;
   final VoidCallback? onDelete;
   final VoidCallback? onRename;
+  final VoidCallback? onSetReminder;
+  final ProfileReminder? reminder;
+  final bool reminderLoading;
+  final VoidCallback? onCancelReminder;
 
   @override
   Widget build(BuildContext context) {
@@ -140,6 +149,10 @@ class ProfileCard extends StatelessWidget {
                         onDisable?.call();
                       case 'rename':
                         onRename?.call();
+                      case 'reminder':
+                        onSetReminder?.call();
+                      case 'cancelReminder':
+                        onCancelReminder?.call();
                       case 'delete':
                         onDelete?.call();
                     }
@@ -160,6 +173,20 @@ class ProfileCard extends StatelessWidget {
                       child: Text(context.l10n.rename),
                     ),
                     PopupMenuItem(
+                      value: 'reminder',
+                      enabled: !reminderLoading && onSetReminder != null,
+                      child: Text(
+                        reminder == null
+                            ? context.l10n.keepAliveReminder
+                            : context.l10n.editKeepAliveReminder,
+                      ),
+                    ),
+                    if (reminder != null)
+                      PopupMenuItem(
+                        value: 'cancelReminder',
+                        child: Text(context.l10n.cancelReminder),
+                      ),
+                    PopupMenuItem(
                       value: 'delete',
                       child: Text(context.l10n.delete),
                     ),
@@ -170,6 +197,7 @@ class ProfileCard extends StatelessWidget {
             const SizedBox(height: 6),
             _ProfileFooter(
               profile: profile,
+              reminder: reminder,
               onCopyIccid: () => _copyIccid(context),
             ),
           ],
@@ -271,10 +299,12 @@ class _StatusLabel extends StatelessWidget {
 class _ProfileFooter extends StatelessWidget {
   const _ProfileFooter({
     required this.profile,
+    required this.reminder,
     required this.onCopyIccid,
   });
 
   final EuiccProfile profile;
+  final ProfileReminder? reminder;
   final VoidCallback onCopyIccid;
 
   @override
@@ -321,6 +351,10 @@ class _ProfileFooter extends StatelessWidget {
             ),
           ),
         ),
+        if (reminder != null) ...[
+          const SizedBox(width: 6),
+          Flexible(child: _ReminderLabel(reminder: reminder!)),
+        ],
         const SizedBox(width: 8),
         ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 82),
@@ -338,6 +372,46 @@ class _ProfileFooter extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ReminderLabel extends StatelessWidget {
+  const _ReminderLabel({required this.reminder});
+
+  final ProfileReminder reminder;
+
+  @override
+  Widget build(BuildContext context) {
+    final material = MaterialLocalizations.of(context);
+    final date = material.formatCompactDate(reminder.at);
+    final time = material.formatTimeOfDay(TimeOfDay.fromDateTime(reminder.at));
+    final label = context.l10n.reminderScheduledAt(date, time);
+    final scheme = Theme.of(context).colorScheme;
+
+    return Semantics(
+      label: label,
+      child: ExcludeSemantics(
+        child: Row(
+          key: const Key('profile-reminder'),
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.alarm_outlined, size: 14, color: scheme.primary),
+            const SizedBox(width: 3),
+            Flexible(
+              child: Text(
+                '$date $time',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: scheme.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

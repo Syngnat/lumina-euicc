@@ -273,5 +273,27 @@
   "updateCheckFailed": "Could not check for updates. Check the network connection and try again.",
   "updateDownloadFailed": "The update could not be downloaded or did not match the published file.",
   "updateInstallFailed": "Android could not verify or open this update. The installed app was not changed.",
-  "updateInstallerLaunched": "The verified APK was handed to Android's system installer. Confirm the update there."
+  "updateInstallerLaunched": "The verified APK was handed to Android's system installer. Confirm the update there.",
+  "keepAliveReminder": "Keep-alive reminder",
+  "editKeepAliveReminder": "Edit reminder",
+  "cancelReminder": "Cancel reminder",
+  "reminderScheduledAt": "Keep-alive reminder set for {date} at {time}",
+  "@reminderScheduledAt": {
+    "placeholders": {
+      "date": {"type": "String"},
+      "time": {"type": "String"}
+    }
+  },
+  "selectReminderDate": "Select keep-alive date",
+  "selectReminderTime": "Select reminder time",
+  "reminderMustBeFuture": "Choose a future date and time.",
+  "reminderSaved": "Keep-alive reminder saved",
+  "reminderCancelled": "Keep-alive reminder cancelled",
+  "reminderScheduleFailed": "The keep-alive reminder could not be updated.",
+  "reminderNotificationsDeniedTitle": "Notifications are disabled",
+  "reminderNotificationsDeniedDescription": "The date was saved, but Android will not show the reminder until notifications are allowed for Lumina.",
+  "exactAlarmUnavailableTitle": "Exact alarm access is off",
+  "exactAlarmUnavailableDescription": "The reminder is scheduled, but Android may delay it. Allow Alarms & reminders for a more precise alert.",
+  "openAlarmSettings": "Open alarm settings",
+  "close": "Close"
 }

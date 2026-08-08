@@ -1,0 +1,5 @@
+<resources>
+    <string name="profile_reminder_channel_name">Keep-alive reminders</string>
+    <string name="profile_reminder_notification_title">eSIM keep-alive reminder</string>
+    <string name="profile_reminder_notification_body">Check the keep-alive or expiry status of %1$s.</string>
+</resources>

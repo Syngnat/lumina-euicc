@@ -12,6 +12,19 @@
 | `deleteProfile` | `slotId,portId,seId,iccid` | `{ok:true}` |
 | `renameProfile` | `slotId,portId,seId,iccid,name` | `{ok:true}` |
 
+## 本地保号提醒
+
+| API | 说明 |
+|---|---|
+| `getProfileReminder` | 按 Profile 查询本机保存的提醒；ICCID 仅用于生成 SHA-256 本地键，不保存明文 |
+| `scheduleProfileReminder` | 保存日期时间并交给 Android `AlarmManager`；不向 eUICC 写入任何数据 |
+| `cancelProfileReminder` | 取消系统闹钟并删除本机提醒 |
+| `renameProfileReminder` | Profile 改名后同步本地通知名称 |
+| `requestReminderNotificationPermission` | Android 13+ 请求通知权限 |
+| `openExactAlarmSettings` | Android 12+ 打开“闹钟和提醒”特殊权限页；未授权时仍安排可能延迟的非精确提醒 |
+
+提醒通过系统通知触发，应用重启、手机重启和应用升级后会恢复调度。它与下文的 eUICC 待处理通知不是同一类数据。
+
 Profile 卡片为紧凑两行展示。国旗优先来自明确的运营商/品牌身份；元数据不足时，只对无歧义的 ITU E.118 ICCID 国家码显示“发卡地区”。它不代表实际服务国家或漫游范围，共享/全球/无效码保持未知。
 
 ## 下载

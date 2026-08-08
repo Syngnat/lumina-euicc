@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lumina_euicc/l10n/generated/app_localizations.dart';
 import 'package:lumina_euicc/models/euicc_models.dart';
 import 'package:lumina_euicc/models/profile_presentation.dart';
+import 'package:lumina_euicc/models/profile_reminder.dart';
 import 'package:lumina_euicc/widgets/profile_card.dart';
 
 void main() {
@@ -168,6 +169,12 @@ void main() {
       ),
       surfaceSize: const Size(390, 844),
       textScaler: const TextScaler.linear(1.3),
+      reminder: ProfileReminder(
+        at: DateTime(2027, 3, 1, 9),
+        exact: true,
+        notificationPermissionGranted: true,
+        exactAlarmPermissionGranted: true,
+      ),
     );
 
     expect(find.byType(ProfileCard), findsOneWidget);
@@ -264,6 +271,60 @@ void main() {
     );
     expect(find.text('ICCID copied'), findsOneWidget);
   });
+
+  testWidgets('exposes a keep-alive reminder action', (tester) async {
+    var reminderCalls = 0;
+
+    await _pumpCard(
+      tester,
+      profile: const EuiccProfile(
+        iccid: '8901000000000000001',
+        name: 'Keep-alive line',
+        provider: 'Carrier',
+        enabled: false,
+        profileClass: 'operational',
+        seq: 5,
+      ),
+      onSetReminder: () => reminderCalls += 1,
+    );
+
+    await tester.tap(find.byType(PopupMenuButton<String>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Keep-alive reminder'));
+    await tester.pumpAndSettle();
+
+    expect(reminderCalls, 1);
+  });
+
+  testWidgets('shows and cancels an existing reminder', (tester) async {
+    var cancelCalls = 0;
+    await _pumpCard(
+      tester,
+      profile: const EuiccProfile(
+        iccid: '8901000000000000001',
+        name: 'Keep-alive line',
+        provider: 'Carrier',
+        enabled: false,
+        profileClass: 'operational',
+        seq: 5,
+      ),
+      reminder: ProfileReminder(
+        at: DateTime(2027, 3, 1, 9),
+        exact: true,
+        notificationPermissionGranted: true,
+        exactAlarmPermissionGranted: true,
+      ),
+      onCancelReminder: () => cancelCalls += 1,
+    );
+
+    expect(find.byKey(const Key('profile-reminder')), findsOneWidget);
+    await tester.tap(find.byType(PopupMenuButton<String>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cancel reminder'));
+    await tester.pumpAndSettle();
+
+    expect(cancelCalls, 1);
+  });
 }
 
 Future<void> _pumpCard(
@@ -274,6 +335,9 @@ Future<void> _pumpCard(
   VoidCallback? onDisable,
   VoidCallback? onRename,
   VoidCallback? onDelete,
+  VoidCallback? onSetReminder,
+  ProfileReminder? reminder,
+  VoidCallback? onCancelReminder,
   Size surfaceSize = const Size(360, 800),
   TextScaler textScaler = TextScaler.noScaling,
 }) async {
@@ -298,6 +362,9 @@ Future<void> _pumpCard(
             onDisable: onDisable,
             onRename: onRename,
             onDelete: onDelete,
+            onSetReminder: onSetReminder,
+            reminder: reminder,
+            onCancelReminder: onCancelReminder,
           ),
         ),
       ),

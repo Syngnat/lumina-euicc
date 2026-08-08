@@ -1046,6 +1046,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The verified APK was handed to Android\'s system installer. Confirm the update there.'**
   String get updateInstallerLaunched;
+
+  /// No description provided for @keepAliveReminder.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep-alive reminder'**
+  String get keepAliveReminder;
+
+  /// No description provided for @editKeepAliveReminder.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit reminder'**
+  String get editKeepAliveReminder;
+
+  /// No description provided for @cancelReminder.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel reminder'**
+  String get cancelReminder;
+
+  /// No description provided for @reminderScheduledAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep-alive reminder set for {date} at {time}'**
+  String reminderScheduledAt(String date, String time);
+
+  /// No description provided for @selectReminderDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Select keep-alive date'**
+  String get selectReminderDate;
+
+  /// No description provided for @selectReminderTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Select reminder time'**
+  String get selectReminderTime;
+
+  /// No description provided for @reminderMustBeFuture.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a future date and time.'**
+  String get reminderMustBeFuture;
+
+  /// No description provided for @reminderSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep-alive reminder saved'**
+  String get reminderSaved;
+
+  /// No description provided for @reminderCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep-alive reminder cancelled'**
+  String get reminderCancelled;
+
+  /// No description provided for @reminderScheduleFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The keep-alive reminder could not be updated.'**
+  String get reminderScheduleFailed;
+
+  /// No description provided for @reminderNotificationsDeniedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications are disabled'**
+  String get reminderNotificationsDeniedTitle;
+
+  /// No description provided for @reminderNotificationsDeniedDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'The date was saved, but Android will not show the reminder until notifications are allowed for Lumina.'**
+  String get reminderNotificationsDeniedDescription;
+
+  /// No description provided for @exactAlarmUnavailableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Exact alarm access is off'**
+  String get exactAlarmUnavailableTitle;
+
+  /// No description provided for @exactAlarmUnavailableDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'The reminder is scheduled, but Android may delay it. Allow Alarms & reminders for a more precise alert.'**
+  String get exactAlarmUnavailableDescription;
+
+  /// No description provided for @openAlarmSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open alarm settings'**
+  String get openAlarmSettings;
+
+  /// No description provided for @close.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get close;
 }
 
 class _AppLocalizationsDelegate

@@ -74,6 +74,7 @@ OMAPI (removable eUICC)  or  USB CCID reader
 | List profiles | UI/bridge path implemented; one exact, model-unknown 9eSIM-card/device combination listed real profiles with `0.1.1` |
 | Enable / disable profile | UI/bridge path implemented; hardware validation pending |
 | Delete / rename profile | UI/bridge path implemented; hardware validation pending |
+| Keep-alive reminders | Per-profile local Android alarm/notification path implemented with reboot/app-update recovery; no plaintext ICCID is persisted and no reminder data is written to the eUICC |
 | Download via LPA activation code / QR | UI/bridge path, progress events, and confirmation implemented; hardware validation pending |
 | Compatibility check | UI/bridge path implemented |
 | STK management | Settings can open the system SIM Toolkit/card-side LPAe menu; it is an external UI only and does not authorize or return profile data to Lumina |

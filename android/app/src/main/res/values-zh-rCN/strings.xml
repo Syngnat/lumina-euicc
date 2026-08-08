@@ -1,0 +1,5 @@
+<resources>
+    <string name="profile_reminder_channel_name">保号提醒</string>
+    <string name="profile_reminder_notification_title">eSIM 保号提醒</string>
+    <string name="profile_reminder_notification_body">请检查“%1$s”的保号或到期状态。</string>
+</resources>

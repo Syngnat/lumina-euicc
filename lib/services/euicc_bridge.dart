@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 
 import '../models/euicc_models.dart';
+import '../models/profile_reminder.dart';
 
 /// MethodChannel contract for removable eUICC LPA operations.
 class EuiccBridge {
@@ -67,6 +68,51 @@ class EuiccBridge {
 
   Future<void> openInstallPermissionSettings() =>
       _methods.invokeMethod<void>('openInstallPermissionSettings');
+
+  Future<ProfileReminder?> getProfileReminder(String iccid) async {
+    final raw = await _methods.invokeMethod<Map>('getProfileReminder', {
+      'iccid': iccid,
+    });
+    if (raw == null || raw.isEmpty) return null;
+    return ProfileReminder.fromMap(raw);
+  }
+
+  Future<ProfileReminder> scheduleProfileReminder({
+    required String iccid,
+    required String profileName,
+    required DateTime at,
+  }) async {
+    final raw = await _methods.invokeMethod<Map>('scheduleProfileReminder', {
+      'iccid': iccid,
+      'profileName': profileName,
+      'triggerAtMillis': at.millisecondsSinceEpoch,
+    });
+    if (raw == null) {
+      throw StateError('Native reminder scheduler returned no result');
+    }
+    return ProfileReminder.fromMap(raw);
+  }
+
+  Future<void> cancelProfileReminder(String iccid) =>
+      _methods.invokeMethod<void>('cancelProfileReminder', {'iccid': iccid});
+
+  Future<void> renameProfileReminder({
+    required String iccid,
+    required String profileName,
+  }) =>
+      _methods.invokeMethod<void>('renameProfileReminder', {
+        'iccid': iccid,
+        'profileName': profileName,
+      });
+
+  Future<bool> requestReminderNotificationPermission() async {
+    final raw = await _methods
+        .invokeMethod<Map>('requestReminderNotificationPermission');
+    return raw?['granted'] == true;
+  }
+
+  Future<void> openExactAlarmSettings() =>
+      _methods.invokeMethod<void>('openExactAlarmSettings');
 
   Future<List<EuiccChannelInfo>> listChannels() async {
     final raw = await _methods.invokeMethod<Map>('listChannels');
