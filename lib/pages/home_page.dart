@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../l10n/l10n.dart';
@@ -177,9 +178,26 @@ class HomePage extends ConsumerWidget {
               loading: () => const SliverFillRemaining(
                 child: Center(child: CircularProgressIndicator()),
               ),
-              error: (e, _) => SliverFillRemaining(
-                child: Center(
-                  child: Text(context.l10n.profilesLoadError('$e')),
+              error: (error, _) => SliverFillRemaining(
+                hasScrollBody: false,
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: _EmptyCard(
+                    icon: '🔄',
+                    title: error is PlatformException &&
+                            error.code == 'euicc_channel_unavailable'
+                        ? context.l10n.channelReconnectingTitle
+                        : context.l10n.profilesUnavailableTitle,
+                    body: error is PlatformException &&
+                            error.code == 'euicc_channel_unavailable'
+                        ? context.l10n.channelReconnectingDescription
+                        : context.l10n.profilesUnavailableDescription,
+                    actionLabel: context.l10n.retry,
+                    onAction: () {
+                      ref.invalidate(channelsProvider);
+                      ref.invalidate(profilesProvider);
+                    },
+                  ),
                 ),
               ),
             ),

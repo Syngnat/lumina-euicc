@@ -248,6 +248,36 @@ abstract class AppLocalizations {
   /// **'Failed to load profiles: {error}'**
   String profilesLoadError(String error);
 
+  /// No description provided for @channelReconnectingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'eUICC channel is reconnecting'**
+  String get channelReconnectingTitle;
+
+  /// No description provided for @channelReconnectingDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'A profile switch or card change can take a few seconds. Keep the card inserted and retry.'**
+  String get channelReconnectingDescription;
+
+  /// No description provided for @profilesUnavailableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Profiles unavailable'**
+  String get profilesUnavailableTitle;
+
+  /// No description provided for @profilesUnavailableDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Lumina could not read profiles from the selected channel. Refresh the channel and try again.'**
+  String get profilesUnavailableDescription;
+
+  /// No description provided for @retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get retry;
+
   /// No description provided for @deleteProfileQuestion.
   ///
   /// In en, this message translates to:

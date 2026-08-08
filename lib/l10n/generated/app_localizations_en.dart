@@ -95,6 +95,23 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get channelReconnectingTitle => 'eUICC channel is reconnecting';
+
+  @override
+  String get channelReconnectingDescription =>
+      'A profile switch or card change can take a few seconds. Keep the card inserted and retry.';
+
+  @override
+  String get profilesUnavailableTitle => 'Profiles unavailable';
+
+  @override
+  String get profilesUnavailableDescription =>
+      'Lumina could not read profiles from the selected channel. Refresh the channel and try again.';
+
+  @override
+  String get retry => 'Retry';
+
+  @override
   String get deleteProfileQuestion => 'Delete profile?';
 
   @override

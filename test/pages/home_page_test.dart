@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lumina_euicc/models/euicc_models.dart';
@@ -89,6 +90,49 @@ void main() {
     refreshedProfiles.complete(const [profileB]);
     await tester.pumpAndSettle();
     expect(find.text('Profile B'), findsOneWidget);
+  });
+
+  testWidgets('a reconnect failure is actionable and never exposes internals',
+      (tester) async {
+    const channel = EuiccChannelInfo(
+      slotId: 0,
+      portId: 0,
+      seId: '0',
+      label: 'Phone slot',
+      type: 'omapi',
+    );
+    final bridge = FakeEuiccBridge()
+      ..channels = const [channel]
+      ..profiles = const [_profile];
+    var channelReady = false;
+    bridge.listProfilesHandler = ({
+      required slotId,
+      required portId,
+      required seId,
+    }) async {
+      if (!channelReady) {
+        throw PlatformException(
+          code: 'euicc_channel_unavailable',
+          message: 'EuiccChannelNotFoundException',
+        );
+      }
+      return bridge.profiles;
+    };
+    addTearDown(bridge.dispose);
+
+    await _pumpHome(tester, bridge);
+    await tester.pumpAndSettle(const Duration(milliseconds: 600));
+
+    expect(find.text('eUICC channel is reconnecting'), findsOneWidget);
+    expect(find.text('Retry'), findsOneWidget);
+    expect(find.textContaining('PlatformException'), findsNothing);
+    expect(find.textContaining('EuiccChannelNotFoundException'), findsNothing);
+
+    channelReady = true;
+    await tester.tap(find.text('Retry'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('giffgaff'), findsWidgets);
   });
 
   testWidgets('a successful download from the empty state refreshes profiles',

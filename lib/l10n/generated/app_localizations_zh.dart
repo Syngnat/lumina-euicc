@@ -90,6 +90,22 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get channelReconnectingTitle => 'eUICC 通道正在重连';
+
+  @override
+  String get channelReconnectingDescription =>
+      '启用配置或换卡后，通道可能需要几秒恢复。请保持卡片插入并重试。';
+
+  @override
+  String get profilesUnavailableTitle => '暂时无法读取配置';
+
+  @override
+  String get profilesUnavailableDescription => 'Lumina 无法从当前通道读取配置。请刷新通道后重试。';
+
+  @override
+  String get retry => '重试';
+
+  @override
   String get deleteProfileQuestion => '删除配置文件？';
 
   @override

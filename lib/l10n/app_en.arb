@@ -34,6 +34,11 @@
   "@profilesLoadError": {
     "placeholders": {"error": {"type": "String"}}
   },
+  "channelReconnectingTitle": "eUICC channel is reconnecting",
+  "channelReconnectingDescription": "A profile switch or card change can take a few seconds. Keep the card inserted and retry.",
+  "profilesUnavailableTitle": "Profiles unavailable",
+  "profilesUnavailableDescription": "Lumina could not read profiles from the selected channel. Refresh the channel and try again.",
+  "retry": "Retry",
   "deleteProfileQuestion": "Delete profile?",
   "deleteProfileConfirmation": "Delete “{name}”? This cannot be undone.",
   "@deleteProfileConfirmation": {

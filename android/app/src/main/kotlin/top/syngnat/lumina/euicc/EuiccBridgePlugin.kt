@@ -82,6 +82,7 @@ class EuiccBridgePlugin :
 
     private val activeDownload = AtomicReference<DownloadTaskSession?>(null)
     private val qrScanSession = QrScanSession()
+    private val profileSwitchCoordinator = BridgeProfileSwitchCoordinator()
     private val channelDiscovery by lazy {
         BridgeChannelDiscovery(
             discoverRealChannels = ::discoverRealChannels,
@@ -296,6 +297,13 @@ class EuiccBridgePlugin :
             try {
                 val value = withContext(Dispatchers.IO) { block() }
                 result.success(value)
+            } catch (e: EuiccChannelManager.EuiccChannelNotFoundException) {
+                Log.w(TAG, "method waiting for eUICC channel reconnect")
+                result.error(
+                    "euicc_channel_unavailable",
+                    "The eUICC channel is reconnecting",
+                    null,
+                )
             } catch (e: Exception) {
                 Log.e(TAG, "method failed", e)
                 result.error("euicc_error", e.message, e.toString())
@@ -394,11 +402,22 @@ class EuiccBridgePlugin :
             }
             return mapOf("ok" to true, "mode" to "mock")
         }
-        val ok = manager.withEuiccChannel(slotId, portId, seId) { ch ->
-            ch.lpa.switchProfile(iccid, enable = enable, refresh = true)
-        }
-        if (!ok) throw IllegalStateException("switchProfile failed")
-        return mapOf("ok" to true, "mode" to "real")
+        val outcome = profileSwitchCoordinator.switchAndReconnect(
+            performSwitch = { refresh ->
+                manager.withEuiccChannel(slotId, portId, seId) { ch ->
+                    ch.lpa.switchProfile(iccid, enable = enable, refresh = refresh)
+                }
+            },
+            waitForReconnect = { timeoutMillis ->
+                manager.waitForReconnect(slotId, portId, timeoutMillis)
+            },
+        )
+        if (!outcome.switched) throw IllegalStateException("switchProfile failed")
+        return mapOf(
+            "ok" to true,
+            "mode" to "real",
+            "refreshed" to outcome.refreshed,
+        )
     }
 
     private suspend fun deleteProfile(

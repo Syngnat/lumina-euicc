@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/euicc_models.dart';
@@ -37,12 +38,24 @@ final profilesProvider =
   final channels = await ref.watch(channelsProvider.future);
   final active = _currentChannel(channels, selectedKey);
   if (active == null) return const [];
-  return bridge.listProfiles(
-    slotId: active.slotId,
-    portId: active.portId,
-    seId: active.seId,
-  );
+  try {
+    return await _listProfiles(bridge, active);
+  } on PlatformException catch (error) {
+    if (error.code != 'euicc_channel_unavailable') rethrow;
+    await Future<void>.delayed(const Duration(milliseconds: 500));
+    return _listProfiles(bridge, active);
+  }
 });
+
+Future<List<EuiccProfile>> _listProfiles(
+  EuiccBridge bridge,
+  EuiccChannelInfo channel,
+) =>
+    bridge.listProfiles(
+      slotId: channel.slotId,
+      portId: channel.portId,
+      seId: channel.seId,
+    );
 
 EuiccChannelInfo? _currentChannel(
   List<EuiccChannelInfo> channels,
