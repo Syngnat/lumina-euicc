@@ -46,6 +46,9 @@ required_paths=(
   android/app/build.gradle
   android/gradle/wrapper/gradle-wrapper.jar
   android/gradle/wrapper/gradle-wrapper.properties
+  .github/release-notes.md
+  .github/workflows/ci.yml
+  .github/scripts/check-elf-alignment.sh
   .github/scripts/check-runtime-dependencies.sh
   .github/scripts/check-source-archive.sh
   .github/scripts/collect-gradle-sources.init.gradle

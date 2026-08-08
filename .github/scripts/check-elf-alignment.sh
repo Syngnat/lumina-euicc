@@ -32,15 +32,26 @@ fi
 work_dir="$(mktemp -d)"
 trap 'rm -rf "${work_dir}"' EXIT
 
-unzip -qq "${apk_path}" 'lib/arm64-v8a/*.so' 'lib/x86_64/*.so' -d "${work_dir}"
-mapfile -d '' libraries < <(
-  find "${work_dir}/lib" -type f -name '*.so' -print0 | sort -z
+mapfile -t archive_libraries < <(
+  unzip -Z1 "${apk_path}" |
+    grep -E '^lib/(arm64-v8a|x86_64)/[^/]+\.so$' |
+    LC_ALL=C sort
 )
 
-if (( ${#libraries[@]} == 0 )); then
+if (( ${#archive_libraries[@]} == 0 )); then
   echo "No 64-bit native libraries found in ${apk_path}" >&2
   exit 1
 fi
+
+for archive_library in "${archive_libraries[@]}"; do
+  destination="${work_dir}/${archive_library}"
+  mkdir -p "$(dirname "${destination}")"
+  unzip -p "${apk_path}" "${archive_library}" > "${destination}"
+done
+
+mapfile -d '' libraries < <(
+  find "${work_dir}/lib" -type f -name '*.so' -print0 | sort -z
+)
 
 failed=0
 for library in "${libraries[@]}"; do

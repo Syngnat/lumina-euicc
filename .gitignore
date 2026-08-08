@@ -11,6 +11,10 @@ build/
 *.lock
 !pubspec.lock
 
+# Python tooling
+__pycache__/
+*.py[cod]
+
 # Android
 android/.gradle/
 android/.kotlin/

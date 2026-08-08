@@ -57,6 +57,25 @@ A clean checkout is expected to contain `third_party/OpenEUICC`; do not silently
 - App ID: `top.syngnat.lumina.euicc`
 - Display name: Lumina eUICC
 
+## Downloading an APK
+
+For normal installation, download APKs from [GitHub Releases](https://github.com/Syngnat/lumina-euicc/releases), not from an arbitrary mirror. Android version and CPU ABI are different things: Android 9 through Android 16 can all run on ARM or x86 hardware, so choose the APK for the device's CPU architecture.
+
+| Release asset | Choose it when |
+|---|---|
+| `lumina-euicc-<version>-arm64-v8a.apk` | **Recommended for nearly all modern phones**, including recent OPPO/ColorOS and other Android 16 devices |
+| `lumina-euicc-<version>-armeabi-v7a.apk` | Only for older 32-bit ARM phones that cannot install the ARM64 build |
+| `lumina-euicc-<version>-x86_64.apk` | Primarily for x86_64 Android emulators or uncommon Intel-based Android hardware |
+| `lumina-euicc-<version>-universal.apk` | Fallback when the ABI is unknown; supports every packaged ABI but is larger |
+
+For a recent OPPO phone running Android 16, choose **`arm64-v8a`**. Lumina supports Android 9+ (API 28+); an older Android version does not by itself mean that the phone needs `armeabi-v7a`.
+
+For later updates, keep using the same APK family when possible. Flutter assigns ABI-split APKs architecture-specific version codes, so moving from an ABI-specific installation back to `universal` may require uninstalling the app first; profiles stored on the removable eUICC are unaffected.
+
+Each GitHub Release also includes `SHA256SUMS`, exact-commit project source, dependency-source materials, source metadata, dependency inventories, and license notices from the same trusted build. Verify the APK against `SHA256SUMS`, and keep the matching source and notices with it when redistributing the APK.
+
+If a debug build or an APK signed by another certificate is already installed under `top.syngnat.lumina.euicc`, Android will reject an in-place update. Uninstall that old app first, then install the Release APK. Uninstalling the Android app does not delete profiles stored on the removable eUICC, although the app's local settings are cleared.
+
 ## Release signing
 
 Release builds use a dedicated project key and never fall back to the Android debug key. Gradle first checks `android/key.properties`, then `%USERPROFILE%/.android/lumina-euicc/key.properties`; start from `android/key.properties.example` and never commit the populated file or keystore.
@@ -69,13 +88,13 @@ An EasyEUICC-compatible card normally authorizes EasyEUICC's certificate, not th
 flutter build apk --release --no-pub
 ```
 
-## CI, releases, and Android 16
+## CI, releases, and Android compatibility
 
-GitHub Actions runs Dart analysis, Flutter tests, Kotlin unit tests, a debug APK build, APK metadata checks, and both ZIP and ELF 16 KB alignment checks. A separate `release-signing` environment is restricted to `main` and builds a dedicated-key release APK, then verifies the package ID, SDK levels, ABIs, v2 signature, single signer, certificate fingerprint, and 16 KB compatibility.
+GitHub Actions runs Dart analysis, Flutter tests, Kotlin unit tests, a debug APK build, APK metadata checks, and both ZIP and ELF 16 KB alignment checks. A separate protected `release-signing` environment builds dedicated-key release APKs, then verifies the package ID, SDK levels, expected ABI, v2 signature, single signer, certificate fingerprint, and 16 KB compatibility.
 
-On a trusted `main` run, CI publishes one release artifact containing the signed APK and its matching compliance materials: `lumina-euicc-source-<full-commit-sha>.zip`, `lumina-euicc-dependency-sources-<full-commit-sha>.zip`, `SOURCE_INFO.txt`, `SHA256SUMS`, resolved Flutter/Gradle inventories and source manifests, and root/nested license notices. The metadata records exact Flutter framework/engine revisions and source URLs; unavailable Maven source artifacts are explicitly marked with candidate source/POM URLs. Download the complete artifact from that commit's GitHub Actions run, verify the checksum before installing, and keep the source/notices together when redistributing the APK. Pull-request jobs never receive the release signing secrets and do not publish a signed APK.
+On a trusted version-tag run, CI creates a GitHub Release with the ARM64, 32-bit ARM, x86_64, and universal APKs plus their matching compliance materials: `lumina-euicc-source-<full-commit-sha>.zip`, `lumina-euicc-dependency-sources-<full-commit-sha>.zip`, `SOURCE_INFO.txt`, `SHA256SUMS`, resolved Flutter/Gradle inventories and source manifests, and root/nested license notices. The metadata records exact Flutter framework/engine revisions and source URLs; unavailable Maven source artifacts are explicitly marked with candidate source/POM URLs. Trusted `main` builds may also retain the complete bundle as a GitHub Actions artifact for CI traceability. Pull-request jobs never receive the release signing secrets and cannot publish a signed APK or Release.
 
-The app currently compiles with API 36 and targets API 35, so Android 16 installation is covered without opting into target-36 behaviour changes. CI cannot validate OPPO/ColorOS OMAPI, ARA-M access rules, or a physical eUICC; those checks must be run on the phone.
+The app currently has a minimum SDK of API 28 (Android 9), compiles with API 36, and targets API 35. This covers installation on Android 9 through Android 16 without opting into target-36 behaviour changes. CI cannot validate OPPO/ColorOS OMAPI, ARA-M access rules, or a physical eUICC; those checks must be run on the phone.
 
 ## License
 

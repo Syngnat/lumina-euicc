@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    tags:
+      - "v*"
   pull_request:
   workflow_dispatch:
 
@@ -121,11 +123,17 @@ jobs:
     name: Build and verify signed release
     needs: verify
     if: >-
-      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
-      github.ref == 'refs/heads/main'
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'push' &&
+        (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')))
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     environment: release-signing
+
+    outputs:
+      artifact_name: ${{ steps.release_bundle.outputs.artifact_name }}
+      safe_version: ${{ steps.release_bundle.outputs.safe_version }}
+      version_name: ${{ steps.release_bundle.outputs.version_name }}
 
     env:
       EXPECTED_PACKAGE_ID: top.syngnat.lumina.euicc
@@ -135,7 +143,27 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          fetch-depth: 0
           persist-credentials: false
+
+      - name: Validate trusted release ref
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin \
+            '+refs/heads/main:refs/remotes/origin/main'
+          if ! git merge-base --is-ancestor "${GITHUB_SHA}" refs/remotes/origin/main; then
+            echo "Release tags must point to a commit already contained in main." >&2
+            exit 1
+          fi
+
+          version="$(sed -n 's/^version:[[:space:]]*//p' pubspec.yaml | head -n 1)"
+          expected_tag="v${version%%+*}"
+          if [[ "${GITHUB_REF_NAME}" != "${expected_tag}" ]]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match pubspec version ${version} (${expected_tag})." >&2
+            exit 1
+          fi
 
       - name: Set up Java 17
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
@@ -196,40 +224,80 @@ jobs:
           } > android/key.properties
           chmod 600 android/key.properties
 
-      - name: Build dedicated-key release APK
-        run: flutter build apk --release --no-pub
-
-      - name: Verify release signature and Android 16 compatibility
+      - name: Build dedicated-key universal and split APKs
         shell: bash
         run: |
           set -euo pipefail
-          apk="build/app/outputs/flutter-apk/app-release.apk"
+          release_apk_dir="${RUNNER_TEMP}/release-apks"
+          mkdir -p "${release_apk_dir}"
+
+          flutter build apk --release --no-pub
+          cp build/app/outputs/flutter-apk/app-release.apk \
+            "${release_apk_dir}/app-universal-release.apk"
+
+          flutter build apk --release --split-per-abi --no-pub
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk \
+            "${release_apk_dir}/app-arm64-v8a-release.apk"
+          cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk \
+            "${release_apk_dir}/app-armeabi-v7a-release.apk"
+          cp build/app/outputs/flutter-apk/app-x86_64-release.apk \
+            "${release_apk_dir}/app-x86_64-release.apk"
+
+      - name: Verify release signatures and Android compatibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_apk_dir="${RUNNER_TEMP}/release-apks"
           apksigner="${ANDROID_HOME}/build-tools/35.0.0/apksigner"
-          verify_output="$("${apksigner}" verify --verbose --print-certs "${apk}")"
-          printf '%s\n' "${verify_output}"
-          grep -Fq "Verified using v2 scheme (APK Signature Scheme v2): true" <<<"${verify_output}"
-          grep -Fq "Number of signers: 1" <<<"${verify_output}"
-          actual_cert_sha256="$(
-            printf '%s\n' "${verify_output}" |
-              sed -n 's/^Signer #1 certificate SHA-256 digest: //p'
-          )"
-          if [[ "${actual_cert_sha256}" != "${EXPECTED_RELEASE_CERT_SHA256}" ]]; then
-            echo "Unexpected release certificate: ${actual_cert_sha256}" >&2
-            exit 1
-          fi
-          badging="$(${ANDROID_HOME}/build-tools/35.0.0/aapt dump badging "${apk}")"
-          grep -Fq "package: name='${EXPECTED_PACKAGE_ID}'" <<<"${badging}"
-          grep -Fq "compileSdkVersion='36'" <<<"${badging}"
-          grep -Fq "sdkVersion:'28'" <<<"${badging}"
-          grep -Fq "targetSdkVersion:'35'" <<<"${badging}"
-          native_code="$(grep -m1 '^native-code:' <<<"${badging}")"
-          for abi in armeabi-v7a arm64-v8a x86_64; do
-            grep -Fq "'${abi}'" <<<"${native_code}"
+          aapt="${ANDROID_HOME}/build-tools/35.0.0/aapt"
+          zipalign="${ANDROID_HOME}/build-tools/35.0.0/zipalign"
+
+          declare -A apks=(
+            [universal]="${release_apk_dir}/app-universal-release.apk"
+            [arm64-v8a]="${release_apk_dir}/app-arm64-v8a-release.apk"
+            [armeabi-v7a]="${release_apk_dir}/app-armeabi-v7a-release.apk"
+            [x86_64]="${release_apk_dir}/app-x86_64-release.apk"
+          )
+
+          for variant in universal arm64-v8a armeabi-v7a x86_64; do
+            apk="${apks[${variant}]}"
+            verify_output="$("${apksigner}" verify --verbose --print-certs "${apk}")"
+            printf '%s\n' "${verify_output}"
+            grep -Fq "Verified using v2 scheme (APK Signature Scheme v2): true" \
+              <<<"${verify_output}"
+            grep -Fq "Number of signers: 1" <<<"${verify_output}"
+            actual_cert_sha256="$(
+              printf '%s\n' "${verify_output}" |
+                sed -n 's/^Signer #1 certificate SHA-256 digest: //p'
+            )"
+            if [[ "${actual_cert_sha256}" != "${EXPECTED_RELEASE_CERT_SHA256}" ]]; then
+              echo "Unexpected release certificate for ${variant}: ${actual_cert_sha256}" >&2
+              exit 1
+            fi
+
+            badging="$("${aapt}" dump badging "${apk}")"
+            grep -Fq "package: name='${EXPECTED_PACKAGE_ID}'" <<<"${badging}"
+            grep -Fq "compileSdkVersion='36'" <<<"${badging}"
+            grep -Fq "sdkVersion:'28'" <<<"${badging}"
+            grep -Fq "targetSdkVersion:'35'" <<<"${badging}"
+            native_code="$(grep -m1 '^native-code:' <<<"${badging}")"
+            if [[ "${variant}" == "universal" ]]; then
+              for abi in armeabi-v7a arm64-v8a x86_64; do
+                grep -Fq "'${abi}'" <<<"${native_code}"
+              done
+            elif [[ "${native_code}" != "native-code: '${variant}'" ]]; then
+              echo "Unexpected native-code for ${variant}: ${native_code}" >&2
+              exit 1
+            fi
+
+            bash .github/scripts/check-unprivileged-manifest.sh "${apk}"
+            "${zipalign}" -c -P 16 4 "${apk}"
+            sha256sum "${apk}"
           done
-          bash .github/scripts/check-unprivileged-manifest.sh "${apk}"
-          "${ANDROID_HOME}/build-tools/35.0.0/zipalign" -c -P 16 4 "${apk}"
-          bash .github/scripts/check-elf-alignment.sh "${apk}"
-          sha256sum "${apk}"
+
+          for variant in universal arm64-v8a x86_64; do
+            bash .github/scripts/check-elf-alignment.sh "${apks[${variant}]}"
+          done
 
       - name: Verify release runtime dependency policy
         shell: bash
@@ -256,15 +324,81 @@ jobs:
         run: |
           set -euo pipefail
           bash .github/scripts/create-release-bundle.sh \
-            build/app/outputs/flutter-apk/app-release.apk \
+            "${RUNNER_TEMP}/release-apks/app-universal-release.apk" \
+            "${RUNNER_TEMP}/release-apks/app-arm64-v8a-release.apk" \
+            "${RUNNER_TEMP}/release-apks/app-armeabi-v7a-release.apk" \
+            "${RUNNER_TEMP}/release-apks/app-x86_64-release.apk" \
             dist/release \
             "${GITHUB_SHA}"
 
       - name: Upload signed APK and corresponding source
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: ${{ steps.release_bundle.outputs.artifact-name }}
+          name: ${{ steps.release_bundle.outputs.artifact_name }}
           path: dist/release/
           if-no-files-found: error
           compression-level: 0
           retention-days: 90
+
+  publish_release:
+    name: Publish GitHub Release
+    needs: release
+    if: >-
+      github.event_name == 'push' &&
+      startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    permissions:
+      actions: read
+      contents: write
+
+    steps:
+      - name: Download the verified release bundle
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
+        with:
+          name: ${{ needs.release.outputs.artifact_name }}
+          path: dist/release
+
+      - name: Verify downloaded release bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f dist/release/SHA256SUMS
+          test -f dist/release/RELEASE_NOTES.md
+          grep -Fq "Commit: ${GITHUB_SHA}" dist/release/SOURCE_INFO.txt
+          (
+            cd dist/release
+            sha256sum --check SHA256SUMS
+          )
+
+      - name: Publish versioned release assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          VERSION_NAME: ${{ needs.release.outputs.version_name }}
+        run: |
+          set -euo pipefail
+          if gh release view "${RELEASE_TAG}" \
+            --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            echo "Release ${RELEASE_TAG} already exists; refusing to replace its assets." >&2
+            exit 1
+          fi
+
+          mapfile -d '' release_assets < <(
+            find dist/release -maxdepth 1 -type f \
+              -print0 | LC_ALL=C sort -z
+          )
+          if (( ${#release_assets[@]} == 0 )); then
+            echo "No release assets were found." >&2
+            exit 1
+          fi
+
+          gh release create "${RELEASE_TAG}" \
+            "${release_assets[@]}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --verify-tag \
+            --latest \
+            --title "Lumina eUICC ${VERSION_NAME}" \
+            --notes-file dist/release/RELEASE_NOTES.md

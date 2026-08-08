@@ -61,8 +61,8 @@ assert_archive_entry_names_are_safe() {
   fi
 }
 
-if [[ $# -ne 3 ]]; then
-  echo "Usage: $0 <signed-apk> <output-directory> <git-commit>" >&2
+if [[ $# -ne 6 ]]; then
+  echo "Usage: $0 <universal-apk> <arm64-v8a-apk> <armeabi-v7a-apk> <x86_64-apk> <output-directory> <git-commit>" >&2
   exit 2
 fi
 
@@ -73,14 +73,23 @@ for required_command in git unzip tar python3 flutter java; do
   fi
 done
 
-apk="$1"
-output_dir="$2"
-commit="$3"
+universal_apk="$1"
+arm64_apk="$2"
+armeabi_v7a_apk="$3"
+x86_64_apk="$4"
+output_dir="$5"
+commit="$6"
 
-if [[ ! -f "${apk}" ]]; then
-  echo "Signed APK does not exist: ${apk}" >&2
-  exit 1
-fi
+for apk in \
+  "${universal_apk}" \
+  "${arm64_apk}" \
+  "${armeabi_v7a_apk}" \
+  "${x86_64_apk}"; do
+  if [[ ! -f "${apk}" ]]; then
+    echo "Signed APK does not exist: ${apk}" >&2
+    exit 1
+  fi
+done
 
 for legal_file in LICENSE LICENSES_SCOPE.md NOTICE.md THIRD_PARTY_NOTICES.md; do
   if [[ ! -f "${legal_file}" ]]; then
@@ -88,6 +97,12 @@ for legal_file in LICENSE LICENSES_SCOPE.md NOTICE.md THIRD_PARTY_NOTICES.md; do
     exit 1
   fi
 done
+
+release_notes_template=".github/release-notes.md"
+if [[ ! -f "${release_notes_template}" ]]; then
+  echo "Required release notes template is missing: ${release_notes_template}" >&2
+  exit 1
+fi
 
 git cat-file -e "${commit}^{commit}"
 if [[ "$(git rev-parse "${commit}^{commit}")" != "$(git rev-parse HEAD^{commit})" ]]; then
@@ -115,10 +130,16 @@ fi
 
 short_commit="${commit:0:12}"
 safe_version="${version//+/-}"
+version_name="${version%%+*}"
 source_prefix="lumina-euicc-${commit}"
-apk_name="lumina-euicc-${safe_version}-${short_commit}-signed.apk"
+universal_apk_name="lumina-euicc-${safe_version}-universal.apk"
+arm64_apk_name="lumina-euicc-${safe_version}-arm64-v8a.apk"
+armeabi_v7a_apk_name="lumina-euicc-${safe_version}-armeabi-v7a.apk"
+x86_64_apk_name="lumina-euicc-${safe_version}-x86_64.apk"
 source_name="lumina-euicc-source-${commit}.zip"
 dependency_sources_name="lumina-euicc-dependency-sources-${commit}.zip"
+license_materials_root="lumina-euicc-license-materials-${commit}"
+license_materials_name="${license_materials_root}.zip"
 repository_url="${GITHUB_SERVER_URL:-https://github.com}/${GITHUB_REPOSITORY:-Syngnat/lumina-euicc}"
 run_url="${repository_url}/actions/runs/${GITHUB_RUN_ID:-local}"
 flutter_toolchain="$(flutter --version)"
@@ -145,7 +166,16 @@ cleanup() {
 }
 trap cleanup EXIT
 
-cp "${apk}" "${output_dir}/${apk_name}"
+cp "${universal_apk}" "${output_dir}/${universal_apk_name}"
+cp "${arm64_apk}" "${output_dir}/${arm64_apk_name}"
+cp "${armeabi_v7a_apk}" "${output_dir}/${armeabi_v7a_apk_name}"
+cp "${x86_64_apk}" "${output_dir}/${x86_64_apk_name}"
+sed "s/@VERSION@/${safe_version}/g" \
+  "${release_notes_template}" > "${output_dir}/RELEASE_NOTES.md"
+if grep -Fq '@VERSION@' "${output_dir}/RELEASE_NOTES.md"; then
+  echo "Release notes still contain an unresolved @VERSION@ placeholder." >&2
+  exit 1
+fi
 
 # Start with git-archive semantics, then restore tracked export-ignore paths from
 # the same immutable tree so the corresponding-source ZIP contains every file.
@@ -187,6 +217,17 @@ if [[ ! -s "${license_manifest}" ]]; then
   exit 1
 fi
 
+license_materials_staging="${staging_directory}/${license_materials_root}"
+mkdir -p "${license_materials_staging}"
+cp LICENSE LICENSES_SCOPE.md NOTICE.md THIRD_PARTY_NOTICES.md \
+  "${license_manifest}" \
+  "${license_materials_staging}/"
+cp -R "${output_dir}/licenses" "${license_materials_staging}/licenses"
+python3 .github/scripts/make-zip.py \
+  "${output_dir}/${license_materials_name}" \
+  "${staging_directory}" \
+  "${license_materials_root}"
+
 printf '%s\n' "${flutter_machine}" > "${output_dir}/FLUTTER_VERSION.json"
 
 cat > "${output_dir}/SOURCE_INFO.txt" <<EOF
@@ -197,6 +238,7 @@ Commit source: ${repository_url}/tree/${commit}
 Workflow run: ${run_url}
 Source archive: ${source_name}
 Dependency sources: ${dependency_sources_name}
+License materials: ${license_materials_name}
 Package: ${EXPECTED_PACKAGE_ID:-top.syngnat.lumina.euicc}
 Version: ${version}
 Flutter: ${flutter_version}
@@ -229,7 +271,10 @@ EOF
   echo "Project: Lumina eUICC"
   echo "Version: ${version}"
   echo "Commit: ${commit}"
-  echo "APK: ${apk_name}"
+  echo "Universal APK: ${universal_apk_name}"
+  echo "arm64-v8a APK: ${arm64_apk_name}"
+  echo "armeabi-v7a APK: ${armeabi_v7a_apk_name}"
+  echo "x86_64 APK: ${x86_64_apk_name}"
   echo "Package: ${EXPECTED_PACKAGE_ID:-top.syngnat.lumina.euicc}"
   echo "Minimum Android API: 28 (Android 9)"
   echo "Target Android API: 35"
@@ -246,12 +291,21 @@ EOF
   echo "Gradle wrapper:"
   printf '%s\n' "${gradle_toolchain}"
   echo
-  echo "APK metadata:"
-  "${ANDROID_HOME}/build-tools/35.0.0/aapt" dump badging "${output_dir}/${apk_name}" |
-    grep -E "^(package:|sdkVersion:|targetSdkVersion:|native-code:)"
-  echo
-  echo "APK signer certificate:"
-  "${ANDROID_HOME}/build-tools/35.0.0/apksigner" verify --print-certs "${output_dir}/${apk_name}"
+  for release_apk_name in \
+    "${universal_apk_name}" \
+    "${arm64_apk_name}" \
+    "${armeabi_v7a_apk_name}" \
+    "${x86_64_apk_name}"; do
+    echo "APK metadata (${release_apk_name}):"
+    "${ANDROID_HOME}/build-tools/35.0.0/aapt" dump badging \
+      "${output_dir}/${release_apk_name}" |
+      grep -E "^(package:|sdkVersion:|targetSdkVersion:|native-code:)"
+    echo
+    echo "APK signer certificate (${release_apk_name}):"
+    "${ANDROID_HOME}/build-tools/35.0.0/apksigner" verify --print-certs \
+      "${output_dir}/${release_apk_name}"
+    echo
+  done
 } > "${output_dir}/BUILD_INFO.txt"
 
 flutter pub deps --style=compact | tee "${output_dir}/FLUTTER_DEPENDENCIES.txt"
@@ -319,16 +373,27 @@ The Flutter SDK/framework/engine sources are not embedded; SOURCE_INFO.txt and
 FLUTTER_VERSION.json record their exact revisions and upstream source URLs.
 EOF
 
-assert_archive_entry_names_are_safe "${output_dir}/${apk_name}" "APK"
+for release_apk_name in \
+  "${universal_apk_name}" \
+  "${arm64_apk_name}" \
+  "${armeabi_v7a_apk_name}" \
+  "${x86_64_apk_name}"; do
+  assert_archive_entry_names_are_safe \
+    "${output_dir}/${release_apk_name}" \
+    "APK ${release_apk_name}"
+done
 assert_archive_entry_names_are_safe "${output_dir}/${source_name}" "Project source archive"
 assert_archive_entry_names_are_safe \
   "${output_dir}/${dependency_sources_name}" \
   "Dependency source archive"
+assert_archive_entry_names_are_safe \
+  "${output_dir}/${license_materials_name}" \
+  "License materials archive"
 assert_tree_has_no_signing_material "${output_dir}" "Release bundle"
 
 (
   cd "${output_dir}"
-  LC_ALL=C find . -type f ! -name SHA256SUMS -printf '%P\0' |
+  LC_ALL=C find . -maxdepth 1 -type f ! -name SHA256SUMS -printf '%P\0' |
     LC_ALL=C sort -z |
     xargs -0 -r sha256sum > SHA256SUMS
   sha256sum --check SHA256SUMS
@@ -338,6 +403,8 @@ echo "Release bundle created in ${output_dir}:"
 find "${output_dir}" -maxdepth 1 -type f -printf '  %f\n' | LC_ALL=C sort
 
 if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
-  printf 'artifact-name=lumina-euicc-%s-signed-%s\n' \
+  printf 'artifact_name=lumina-euicc-%s-signed-%s\n' \
     "${safe_version}" "${short_commit}" >> "${GITHUB_OUTPUT}"
+  printf 'safe_version=%s\n' "${safe_version}" >> "${GITHUB_OUTPUT}"
+  printf 'version_name=%s\n' "${version_name}" >> "${GITHUB_OUTPUT}"
 fi

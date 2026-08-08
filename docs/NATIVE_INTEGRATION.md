@@ -66,25 +66,28 @@ the legal-screen and native-ZXing changes:
 The native baseline was rerun after those changes:
 
 - `android/gradlew.bat :app:testDebugUnitTest`: 32 tests passed, 0 failures/errors, including the native-ZXing session tests.
-- `android/gradlew.bat :app:assembleRelease`: succeeded with the dedicated release key; `apksigner verify --verbose --print-certs` passed using APK Signature Scheme v2.
+- Universal and `--split-per-abi` release builds succeeded with the dedicated release key; `apksigner verify --verbose --print-certs` passed using APK Signature Scheme v2 for all four APKs.
 - Release certificate SHA-256: `1F:C1:52:76:70:A8:0B:2B:B5:A8:1F:FC:D2:D8:D7:82:C2:AD:00:3A:21:8F:2C:AD:42:9D:30:08:81:07:D8:9F`.
-- APK metadata: `top.syngnat.lumina.euicc`, version `0.1.0` (`1`), compile SDK 36, target SDK 35, ABIs `arm64-v8a`, `armeabi-v7a`, and `x86_64`.
-- `zipalign -c -P 16 4` passed for the release APK. Every arm64-v8a and x86_64 ELF `LOAD` segment has alignment of at least `2**14`; this includes vendored `liblpac-jni.so`.
+- APK metadata: `top.syngnat.lumina.euicc`, version `0.1.0`, compile SDK 36, target SDK 35; the universal APK contains `arm64-v8a`, `armeabi-v7a`, and `x86_64`, while each split APK contains exactly its named ABI.
+- `zipalign -c -P 16 4` passed for all four release APKs. Every arm64-v8a and x86_64 ELF `LOAD` segment has alignment of at least `2**14`; this includes vendored `liblpac-jni.so`.
 
 This is build/test evidence only. It does not validate OMAPI, ARA-M access, USB CCID, APDU traffic, profile mutation, or download behaviour on physical hardware. Consult GitHub Actions for the exact pushed-commit result and current native verification.
 
-## GitHub Actions and Android 16
+## GitHub Actions, Releases, and Android compatibility
 
-`.github/workflows/ci.yml` has two jobs on a pinned Ubuntu 24.04 runner:
+`.github/workflows/ci.yml` uses pinned actions on Ubuntu 24.04:
 
-- `verify` runs for pull requests, `main` pushes, and manual dispatch. It enforces the lockfile, runs Dart analysis, Flutter and Kotlin tests, builds the debug APK, checks package/min/compile/target SDK metadata and ABIs, then checks both APK ZIP alignment and every 64-bit ELF `LOAD` segment for 16 KB compatibility.
-- `release` runs only after `verify` on a trusted `main` push or `main` manual dispatch. Its `release-signing` GitHub Environment is restricted to `main` and contains the four signing secrets. The job builds with the dedicated key and verifies v2 signing, one signer, the expected certificate fingerprint, APK metadata, and 16 KB compatibility.
+- `verify` runs for pull requests, `main` pushes, version tags, and manual dispatch. It enforces the lockfile, runs Dart analysis, Flutter and Kotlin tests, builds the debug APK, checks package/min/compile/target SDK metadata and ABIs, then checks both APK ZIP alignment and every 64-bit ELF `LOAD` segment for 16 KB compatibility.
+- `release` runs only after `verify` on a trusted `main` ref or matching `v*` tag allowed by the `release-signing` Environment. The job builds universal plus three ABI-specific APKs with the dedicated key and verifies v2 signing, one signer, the expected certificate fingerprint, exact ABI metadata, unprivileged manifest policy, ZIP alignment, and 64-bit ELF alignment.
+- `publish_release` runs only for a `v<pubspec version name>` tag already contained in `main`. It downloads the verified artifact with `actions: read` and creates the GitHub Release with `contents: write`; it has no signing environment or keystore secrets.
 
-After verification, a trusted `main` release publishes one artifact containing
-the signed APK, `lumina-euicc-source-<full-commit-sha>.zip`,
+After verification, a trusted build publishes one Actions artifact containing
+the four signed APKs, `lumina-euicc-source-<full-commit-sha>.zip`,
 `lumina-euicc-dependency-sources-<full-commit-sha>.zip`, `SOURCE_INFO.txt`,
 `SHA256SUMS`, Flutter/Gradle dependency inventories and source manifests, and
-root/nested license materials. The dependency archive contains complete hosted
+root/nested license materials. A matching version-tag run also exposes every
+top-level file as a GitHub Release asset, including a ZIP of the nested license
+tree. The dependency archive contains complete hosted
 Pub package trees plus available Maven source JARs and cached POMs; the manifest
 marks unavailable Maven sources and records candidate URLs. The source metadata
 records the repository, full commit and commit URL, package/version, build
@@ -112,7 +115,7 @@ The dedicated Lumina certificate has ARA-M SHA-1 fingerprint `10:0C:A7:FD:2C:E4:
 - lpac-jni, lpac components, cJSON, and registry dependencies retain their own
   bundled or upstream licenses; they must not all be described as
   GPL-3.0-only. See `THIRD_PARTY_NOTICES.md` and nested license files.
-- CI distribution keeps the APK, exact-commit project source, dependency source
+- CI distribution keeps all APK variants, exact-commit project source, dependency source
   archive/manifests, dependency inventories, notices, source metadata, and
   checksums in one artifact. Redistribution must preserve that
   corresponding-source and notice set.
