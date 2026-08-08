@@ -13,6 +13,10 @@ def keystorePropertiesFile = projectKeystorePropertiesFile.exists()
     ? projectKeystorePropertiesFile
     : userKeystorePropertiesFile
 def keystoreProperties = new Properties()
+def releaseSigningRequested = gradle.startParameter.taskNames.any { requestedTask ->
+    def taskName = requestedTask.tokenize(":").last().toLowerCase()
+    taskName ==~ /(?:assemble|bundle|package|install|publish|sign|validatesigning).*release.*/
+}
 if (keystorePropertiesFile.exists()) {
     keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
 
@@ -32,7 +36,7 @@ if (keystorePropertiesFile.exists()) {
             "Release keystore does not exist: ${configuredKeystoreFile}"
         )
     }
-} else if (gradle.startParameter.taskNames.any { it.toLowerCase().contains("release") }) {
+} else if (releaseSigningRequested) {
     throw new GradleException(
         "Release signing config not found. Copy android/key.properties.example to " +
         "android/key.properties or ${userKeystorePropertiesFile}."
