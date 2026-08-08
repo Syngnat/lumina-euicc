@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 
 import '../models/euicc_models.dart';
 
-/// MethodChannel contract aligned with EasyEUICC LPA operations.
+/// MethodChannel contract for removable eUICC LPA operations.
 class EuiccBridge {
   EuiccBridge({
     MethodChannel? methodChannel,

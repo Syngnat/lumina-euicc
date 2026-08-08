@@ -30,6 +30,38 @@ class AppLocalizationsZh extends AppLocalizations {
   String get compatibilityCheck => '兼容性检查';
 
   @override
+  String get compatibilityOverviewTitle => '兼容性概览';
+
+  @override
+  String get compatibilityDeviceLabel => '设备';
+
+  @override
+  String get compatibilityAndroidLabel => 'Android';
+
+  @override
+  String get compatibilityOmapiSlotsLabel => 'OMAPI 枚举的 SIM 卡槽';
+
+  @override
+  String get compatibilityIsdrReachedSlotsLabel => '已到达 ISD-R 访问检查';
+
+  @override
+  String get compatibilityIsdrAuthorizedSlotsLabel => '已授权打开 ISD-R';
+
+  @override
+  String get compatibilityAraMDeniedSlotsLabel => 'ARA-M / 访问控制拒绝';
+
+  @override
+  String get compatibilityDetailsTitle => '详细诊断';
+
+  @override
+  String get compatibilityNoSlots => '无';
+
+  @override
+  String compatibilitySlotName(int slotId) {
+    return 'SIM $slotId';
+  }
+
+  @override
   String get channels => '通道';
 
   @override
@@ -90,7 +122,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String get provider => '运营商';
 
   @override
+  String get profileRegionUnitedKingdom => '英国';
+
+  @override
+  String get profileRegionGlobal => '全球';
+
+  @override
+  String get profileRegionUnknown => '地区未知';
+
+  @override
   String get iccidCopied => '已复制 ICCID';
+
+  @override
+  String get iccidCopyHint => '长按复制 ICCID';
 
   @override
   String profileSummary(int sequence, String profileClass) {
@@ -191,7 +235,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutDescription =>
-      'Lumina eUICC — 对齐 EasyEUICC 功能的 Flutter 界面。\n核心 LPA 运行在 Android 原生桥接层。';
+      'Lumina eUICC — 面向可插拔 eUICC 管理的现代 Flutter 界面。\n核心 LPA 运行在 Android 原生桥接层。';
 
   @override
   String get legalAndOpenSource => '法律与开源信息';
@@ -376,16 +420,16 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get compatibilityOmapiSlotAuthorized => '已使用当前应用证书打开 ISD-R。';
+  String get compatibilityOmapiSlotAuthorized => '已使用当前应用身份打开 ISD-R。';
 
   @override
   String compatibilityOmapiSlotAccessDenied(int slotId) {
-    return '手机卡槽 $slotId 可访问，但 OMAPI / ARA-M 拒绝了当前应用证书。';
+    return '手机卡槽 $slotId 可访问，但 OMAPI 访问控制（UICC 通常为 ARA-M / ARF）未授权当前应用身份。';
   }
 
   @override
   String compatibilityOmapiSlotIsdrUnavailable(int slotId) {
-    return '手机卡槽 $slotId 可访问，但默认 ISD-R AID 未返回通道。';
+    return '手机卡槽 $slotId 可访问，但所有已配置的 ISD-R AID 均未打开通道。';
   }
 
   @override
@@ -428,5 +472,5 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get compatibilityRootlessAraMRequired =>
-      '无需也不会使用 Root。对于插在手机里的卡，其 ARA-M 必须授权 Lumina 的包名和签名证书；仅授权 EasyEUICC 的规则不会授权 Lumina。USB CCID 使用独立的权限流程。';
+      '无需也不会使用 Root。对于插在手机里的卡，其访问控制规则必须匹配 Lumina 至少一个当前签名证书；如果规则还绑定 Android 包名，则必须同时匹配 Lumina 包名。USB CCID 使用独立的权限流程。';
 }

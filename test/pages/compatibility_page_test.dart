@@ -20,6 +20,19 @@ const _diagnostics = <CompatibilityItem>[
     },
   ),
   CompatibilityItem(
+    code: 'device_info',
+    title: 'native device_info title',
+    ok: true,
+    detail: 'native device_info detail',
+    arguments: {
+      'brand': 'OPPO',
+      'device': 'OP61C1L1',
+      'model': 'PME110',
+      'androidRelease': '16',
+      'androidSdkInt': 36,
+    },
+  ),
+  CompatibilityItem(
     code: 'lpa_port_failed',
     title: 'native lpa_port_failed title',
     ok: false,
@@ -144,8 +157,21 @@ void main() {
       expect(find.text(item.detail), findsNothing);
     }
     expect(find.text('用于 ARA-M 的应用身份'), findsOneWidget);
+    expect(find.text('兼容性概览'), findsOneWidget);
+    expect(find.text('OPPO PME110 · OP61C1L1'), findsOneWidget);
+    expect(find.text('Android 16 · API 36'), findsOneWidget);
+    expect(find.text('OMAPI 枚举的 SIM 卡槽'), findsOneWidget);
+    expect(find.text('SIM 0、SIM 1、SIM 2、SIM 3'), findsOneWidget);
+    expect(find.text('已到达 ISD-R 访问检查'), findsOneWidget);
+    expect(find.text('SIM 0、SIM 1'), findsOneWidget);
+    expect(find.text('已授权打开 ISD-R'), findsOneWidget);
+    expect(find.text('SIM 0'), findsOneWidget);
+    expect(find.text('ARA-M / 访问控制拒绝'), findsOneWidget);
+    expect(find.text('SIM 1'), findsOneWidget);
     expect(
-      find.text('手机卡槽 1 可访问，但 OMAPI / ARA-M 拒绝了当前应用证书。'),
+      find.text(
+        '手机卡槽 1 可访问，但 OMAPI 访问控制（UICC 通常为 ARA-M / ARF）未授权当前应用身份。',
+      ),
       findsOneWidget,
     );
     expect(
@@ -163,9 +189,20 @@ void main() {
       expect(find.text(item.detail), findsNothing);
     }
     expect(find.text('App identity for ARA-M'), findsOneWidget);
+    expect(find.text('Compatibility overview'), findsOneWidget);
+    expect(find.text('OPPO PME110 · OP61C1L1'), findsOneWidget);
+    expect(find.text('Android 16 · API 36'), findsOneWidget);
+    expect(find.text('OMAPI-enumerated SIM slots'), findsOneWidget);
+    expect(find.text('SIM 0, SIM 1, SIM 2, SIM 3'), findsOneWidget);
+    expect(find.text('ISD-R access check reached'), findsOneWidget);
+    expect(find.text('SIM 0, SIM 1'), findsOneWidget);
+    expect(find.text('Authorized ISD-R access'), findsOneWidget);
+    expect(find.text('SIM 0'), findsOneWidget);
+    expect(find.text('ARA-M / access control denied'), findsOneWidget);
+    expect(find.text('SIM 1'), findsOneWidget);
     expect(
       find.text(
-        'Phone slot 1 is reachable, but OMAPI / ARA-M denied this app certificate.',
+        'Phone slot 1 is reachable, but OMAPI access control (normally ARA-M / ARF for UICC) did not authorize the current app identity.',
       ),
       findsOneWidget,
     );

@@ -31,6 +31,39 @@ class AppLocalizationsEn extends AppLocalizations {
   String get compatibilityCheck => 'Compatibility check';
 
   @override
+  String get compatibilityOverviewTitle => 'Compatibility overview';
+
+  @override
+  String get compatibilityDeviceLabel => 'Device';
+
+  @override
+  String get compatibilityAndroidLabel => 'Android';
+
+  @override
+  String get compatibilityOmapiSlotsLabel => 'OMAPI-enumerated SIM slots';
+
+  @override
+  String get compatibilityIsdrReachedSlotsLabel => 'ISD-R access check reached';
+
+  @override
+  String get compatibilityIsdrAuthorizedSlotsLabel => 'Authorized ISD-R access';
+
+  @override
+  String get compatibilityAraMDeniedSlotsLabel =>
+      'ARA-M / access control denied';
+
+  @override
+  String get compatibilityDetailsTitle => 'Detailed diagnostics';
+
+  @override
+  String get compatibilityNoSlots => 'None';
+
+  @override
+  String compatibilitySlotName(int slotId) {
+    return 'SIM $slotId';
+  }
+
+  @override
   String get channels => 'Channels';
 
   @override
@@ -92,7 +125,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get provider => 'Provider';
 
   @override
+  String get profileRegionUnitedKingdom => 'United Kingdom';
+
+  @override
+  String get profileRegionGlobal => 'Global';
+
+  @override
+  String get profileRegionUnknown => 'Region unknown';
+
+  @override
   String get iccidCopied => 'ICCID copied';
+
+  @override
+  String get iccidCopyHint => 'Long-press to copy ICCID';
 
   @override
   String profileSummary(int sequence, String profileClass) {
@@ -193,7 +238,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutDescription =>
-      'Lumina eUICC — Flutter UI aligned with EasyEUICC capabilities.\nCore LPA runs in the Android native bridge.';
+      'Lumina eUICC — a modern Flutter interface for removable eUICC management.\nCore LPA runs in the Android native bridge.';
 
   @override
   String get legalAndOpenSource => 'Legal & open source';
@@ -386,16 +431,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get compatibilityOmapiSlotAuthorized =>
-      'ISD-R opened for this app certificate.';
+      'ISD-R opened for the current app identity.';
 
   @override
   String compatibilityOmapiSlotAccessDenied(int slotId) {
-    return 'Phone slot $slotId is reachable, but OMAPI / ARA-M denied this app certificate.';
+    return 'Phone slot $slotId is reachable, but OMAPI access control (normally ARA-M / ARF for UICC) did not authorize the current app identity.';
   }
 
   @override
   String compatibilityOmapiSlotIsdrUnavailable(int slotId) {
-    return 'Phone slot $slotId is reachable, but the default ISD-R AID returned no channel.';
+    return 'Phone slot $slotId is reachable, but none of the configured ISD-R AIDs opened a channel.';
   }
 
   @override
@@ -442,5 +487,5 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get compatibilityRootlessAraMRequired =>
-      'No root is used or required. For a card in the phone, its ARA-M must authorize Lumina\'s package and signing certificate; an EasyEUICC-only rule does not authorize Lumina. USB CCID uses a separate permission path.';
+      'No root is used or required. For a card in the phone, its access-control rule must match at least one current Lumina signing certificate; if the rule also binds an Android package, it must match Lumina\'s package. USB CCID uses a separate permission path.';
 }

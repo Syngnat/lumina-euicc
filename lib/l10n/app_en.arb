@@ -7,6 +7,19 @@
   "noEuiccFound": "No eUICC found",
   "noEuiccFoundDescription": "Insert a compatible removable eUICC, or connect a USB CCID reader.",
   "compatibilityCheck": "Compatibility check",
+  "compatibilityOverviewTitle": "Compatibility overview",
+  "compatibilityDeviceLabel": "Device",
+  "compatibilityAndroidLabel": "Android",
+  "compatibilityOmapiSlotsLabel": "OMAPI-enumerated SIM slots",
+  "compatibilityIsdrReachedSlotsLabel": "ISD-R access check reached",
+  "compatibilityIsdrAuthorizedSlotsLabel": "Authorized ISD-R access",
+  "compatibilityAraMDeniedSlotsLabel": "ARA-M / access control denied",
+  "compatibilityDetailsTitle": "Detailed diagnostics",
+  "compatibilityNoSlots": "None",
+  "compatibilitySlotName": "SIM {slotId}",
+  "@compatibilitySlotName": {
+    "placeholders": {"slotId": {"type": "int"}}
+  },
   "channels": "Channels",
   "channelError": "Channel error: {error}",
   "@channelError": {
@@ -34,7 +47,11 @@
   "enabled": "Enabled",
   "disabled": "Disabled",
   "provider": "Provider",
+  "profileRegionUnitedKingdom": "United Kingdom",
+  "profileRegionGlobal": "Global",
+  "profileRegionUnknown": "Region unknown",
   "iccidCopied": "ICCID copied",
+  "iccidCopyHint": "Long-press to copy ICCID",
   "profileSummary": "#{sequence} · {profileClass}",
   "@profileSummary": {
     "placeholders": {
@@ -78,7 +95,7 @@
   "downloading": "Downloading…",
   "startDownload": "Start download",
   "about": "About",
-  "aboutDescription": "Lumina eUICC — Flutter UI aligned with EasyEUICC capabilities.\nCore LPA runs in the Android native bridge.",
+  "aboutDescription": "Lumina eUICC — a modern Flutter interface for removable eUICC management.\nCore LPA runs in the Android native bridge.",
   "legalAndOpenSource": "Legal & open source",
   "legalAndOpenSourceDescription": "License, source code, warranty, and third-party notices",
   "projectLicense": "Lumina license",
@@ -177,12 +194,12 @@
   "@compatibilityOmapiSlotTitle": {
     "placeholders": {"slotId": {"type": "int"}}
   },
-  "compatibilityOmapiSlotAuthorized": "ISD-R opened for this app certificate.",
-  "compatibilityOmapiSlotAccessDenied": "Phone slot {slotId} is reachable, but OMAPI / ARA-M denied this app certificate.",
+  "compatibilityOmapiSlotAuthorized": "ISD-R opened for the current app identity.",
+  "compatibilityOmapiSlotAccessDenied": "Phone slot {slotId} is reachable, but OMAPI access control (normally ARA-M / ARF for UICC) did not authorize the current app identity.",
   "@compatibilityOmapiSlotAccessDenied": {
     "placeholders": {"slotId": {"type": "int"}}
   },
-  "compatibilityOmapiSlotIsdrUnavailable": "Phone slot {slotId} is reachable, but the default ISD-R AID returned no channel.",
+  "compatibilityOmapiSlotIsdrUnavailable": "Phone slot {slotId} is reachable, but none of the configured ISD-R AIDs opened a channel.",
   "@compatibilityOmapiSlotIsdrUnavailable": {
     "placeholders": {"slotId": {"type": "int"}}
   },
@@ -206,5 +223,5 @@
   "compatibilityLpaChannelInvalid": "No valid LPA channel opened. Check the per-slot result and ARA-M rule.",
   "compatibilityRootlessTitle": "Rootless access / ARA-M",
   "compatibilityRootlessReady": "No root is used or required; a real LPA channel is available.",
-  "compatibilityRootlessAraMRequired": "No root is used or required. For a card in the phone, its ARA-M must authorize Lumina's package and signing certificate; an EasyEUICC-only rule does not authorize Lumina. USB CCID uses a separate permission path."
+  "compatibilityRootlessAraMRequired": "No root is used or required. For a card in the phone, its access-control rule must match at least one current Lumina signing certificate; if the rule also binds an Android package, it must match Lumina's package. USB CCID uses a separate permission path."
 }

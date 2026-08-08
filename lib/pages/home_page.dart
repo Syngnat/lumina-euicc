@@ -44,9 +44,8 @@ class HomePage extends ConsumerWidget {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: selected == null
-            ? null
-            : () => _openDownload(context, ref, selected),
+        key: const Key('newEsimButton'),
+        onPressed: () => _openDownloadForCurrentChannel(context, ref),
         icon: const Icon(Icons.add),
         label: Text(context.l10n.newEsim),
       ),
@@ -134,41 +133,45 @@ class HomePage extends ConsumerWidget {
                         title: context.l10n.noProfilesYet,
                         body: context.l10n.noProfilesDescription,
                         actionLabel: context.l10n.newEsim,
-                        onAction: selected == null
-                            ? null
-                            : () => _openDownload(context, ref, selected),
+                        onAction: () =>
+                            _openDownloadForCurrentChannel(context, ref),
                       ),
                     ),
                   );
                 }
-                return Consumer(
-                  builder: (context, ref, _) {
-                    final channel = ref.watch(selectedChannelProvider);
-                    return SliverPadding(
-                      padding: const EdgeInsets.only(bottom: 96, top: 8),
-                      sliver: SliverList.builder(
-                        itemCount: profiles.length,
-                        itemBuilder: (context, index) {
-                          final p = profiles[index];
-                          return ProfileCard(
-                            profile: p,
-                            onEnable: channel == null
-                                ? null
-                                : () => _switch(ref, channel, p, true),
-                            onDisable: channel == null
-                                ? null
-                                : () => _switch(ref, channel, p, false),
-                            onDelete: channel == null
-                                ? null
-                                : () => _delete(context, ref, channel, p),
-                            onRename: channel == null
-                                ? null
-                                : () => _rename(context, ref, channel, p),
-                          );
-                        },
-                      ),
-                    );
-                  },
+                return SliverPadding(
+                  padding: const EdgeInsets.only(bottom: 96, top: 8),
+                  sliver: SliverList.builder(
+                    itemCount: profiles.length,
+                    itemBuilder: (context, index) {
+                      final p = profiles[index];
+                      return ProfileCard(
+                        profile: p,
+                        onEnable: selected == null
+                            ? null
+                            : () => _switch(ref, selected, p, true),
+                        onDisable: selected == null
+                            ? null
+                            : () => _switch(ref, selected, p, false),
+                        onDelete: selected == null
+                            ? null
+                            : () => _delete(
+                                  context,
+                                  ref,
+                                  selected,
+                                  p,
+                                ),
+                        onRename: selected == null
+                            ? null
+                            : () => _rename(
+                                  context,
+                                  ref,
+                                  selected,
+                                  p,
+                                ),
+                      );
+                    },
+                  ),
                 );
               },
               loading: () => const SliverFillRemaining(
@@ -184,6 +187,66 @@ class HomePage extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _openDownloadForCurrentChannel(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    debugPrint('[LuminaAddProfile] tap');
+    var channel = ref.read(selectedChannelProvider);
+
+    if (channel == null) {
+      debugPrint('[LuminaAddProfile] waiting_for_channel_probe');
+      try {
+        await ref.read(channelsProvider.future);
+      } catch (error) {
+        debugPrint(
+          '[LuminaAddProfile] channel_probe_failed '
+          'errorType=${error.runtimeType}',
+        );
+        if (context.mounted) {
+          _showAddProfileMessage(
+            context,
+            context.l10n.channelError('$error'),
+          );
+        }
+        return;
+      }
+      if (!context.mounted) return;
+      channel = ref.read(selectedChannelProvider);
+    }
+
+    if (channel == null) {
+      debugPrint('[LuminaAddProfile] no_channel');
+      _showAddProfileMessage(context, context.l10n.noEuiccFoundDescription);
+      return;
+    }
+
+    debugPrint(
+      '[LuminaAddProfile] opening_download '
+      'slot=${channel.slotId} port=${channel.portId}',
+    );
+    try {
+      await _openDownload(context, ref, channel);
+    } catch (error) {
+      debugPrint(
+        '[LuminaAddProfile] navigation_failed '
+        'errorType=${error.runtimeType}',
+      );
+      if (context.mounted) {
+        _showAddProfileMessage(
+          context,
+          context.l10n.channelError('$error'),
+        );
+      }
+    }
+  }
+
+  void _showAddProfileMessage(BuildContext context, String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _openDownload(

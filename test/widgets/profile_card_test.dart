@@ -1,0 +1,227 @@
+import 'dart:ui' show SemanticsAction;
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:lumina_euicc/l10n/generated/app_localizations.dart';
+import 'package:lumina_euicc/models/euicc_models.dart';
+import 'package:lumina_euicc/models/profile_presentation.dart';
+import 'package:lumina_euicc/widgets/profile_card.dart';
+
+void main() {
+  group('ProfilePresentation', () {
+    test('maps an explicit giffgaff identity to the United Kingdom', () {
+      expect(
+        ProfilePresentation.infer(name: 'My profile', provider: 'giffgaff'),
+        const ProfilePresentation(
+          region: ProfileRegion.unitedKingdom,
+          symbol: '🇬🇧',
+        ),
+      );
+    });
+
+    test(
+        'keeps explicit travel identities global and unknown identities unknown',
+        () {
+      expect(
+        ProfilePresentation.infer(name: 'Saily Travel', provider: 'Saily')
+            .region,
+        ProfileRegion.global,
+      );
+      expect(
+        ProfilePresentation.infer(name: 'Personal', provider: 'Carrier X')
+            .region,
+        ProfileRegion.unknown,
+      );
+    });
+
+    test('does not infer a country from ICCID-like digits', () {
+      expect(
+        ProfilePresentation.infer(
+          name: '8944100000000000001',
+          provider: '',
+        ).region,
+        ProfileRegion.unknown,
+      );
+    });
+  });
+
+  testWidgets('renders a localized digital-passport hierarchy', (tester) async {
+    await _pumpCard(
+      tester,
+      profile: const EuiccProfile(
+        iccid: '8944101234567890123',
+        name: 'giffgaff UK',
+        provider: 'giffgaff',
+        enabled: true,
+        profileClass: 'operational',
+        seq: 3,
+      ),
+      locale: const Locale('zh'),
+    );
+
+    final badge = tester.widget<SizedBox>(
+      find.byKey(const ValueKey('profile-region-badge')),
+    );
+    expect(badge.width, 44);
+    expect(badge.height, 44);
+    expect(find.text('🇬🇧'), findsOneWidget);
+    expect(find.text('英国'), findsOneWidget);
+    expect(find.text('giffgaff UK'), findsOneWidget);
+    expect(find.text('giffgaff'), findsOneWidget);
+    expect(find.text('已启用'), findsOneWidget);
+    expect(find.text('8944101234567890123'), findsOneWidget);
+    expect(find.text('#3 · 正式'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('uses the unknown fallback without guessing a region',
+      (tester) async {
+    await _pumpCard(
+      tester,
+      profile: const EuiccProfile(
+        iccid: '8901000000000000001',
+        name: 'Personal line',
+        provider: 'Unknown carrier',
+        enabled: false,
+        profileClass: 'operational',
+        seq: 1,
+      ),
+    );
+
+    expect(find.text('🌐'), findsOneWidget);
+    expect(find.text('Region unknown'), findsOneWidget);
+    expect(find.text('Global'), findsNothing);
+    expect(find.text('Disabled'), findsOneWidget);
+  });
+
+  testWidgets('stays overflow-free at a 1.3 text scale', (tester) async {
+    await _pumpCard(
+      tester,
+      profile: const EuiccProfile(
+        iccid: '8901000000000000001',
+        name: 'A long travel profile name for a compact phone',
+        provider: 'A long global network provider name',
+        enabled: true,
+        profileClass: 'operational',
+        seq: 12,
+      ),
+      surfaceSize: const Size(390, 844),
+      textScaler: const TextScaler.linear(1.3),
+    );
+
+    expect(find.byType(ProfileCard), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('preserves actions and long-press ICCID copy', (tester) async {
+    var enableCalls = 0;
+    var renameCalls = 0;
+    var deleteCalls = 0;
+    const iccid = '8901000000000000001';
+
+    await _pumpCard(
+      tester,
+      profile: const EuiccProfile(
+        iccid: iccid,
+        name: 'Work line',
+        provider: 'Carrier',
+        enabled: false,
+        profileClass: 'operational',
+        seq: 2,
+      ),
+      onEnable: () => enableCalls += 1,
+      onRename: () => renameCalls += 1,
+      onDelete: () => deleteCalls += 1,
+    );
+
+    await tester.tap(find.byType(PopupMenuButton<String>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Enable'));
+    await tester.pumpAndSettle();
+    expect(enableCalls, 1);
+
+    await tester.tap(find.byType(PopupMenuButton<String>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Rename'));
+    await tester.pumpAndSettle();
+    expect(renameCalls, 1);
+
+    await tester.tap(find.byType(PopupMenuButton<String>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete'));
+    await tester.pumpAndSettle();
+    expect(deleteCalls, 1);
+
+    final clipboardCalls = <MethodCall>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        clipboardCalls.add(call);
+        return null;
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+    await tester.longPress(find.text(iccid));
+    await tester.pumpAndSettle();
+    final iccidSemantics = tester.getSemantics(
+      find.byKey(const ValueKey('profile-iccid')),
+    );
+    expect(iccidSemantics.label, contains('ICCID $iccid'));
+    expect(iccidSemantics.hint, contains('Long-press to copy ICCID'));
+    expect(
+      iccidSemantics.getSemanticsData().hasAction(SemanticsAction.longPress),
+      isTrue,
+    );
+    expect(
+      clipboardCalls.where((call) => call.method == 'Clipboard.setData'),
+      hasLength(1),
+    );
+    expect(find.text('ICCID copied'), findsOneWidget);
+  });
+}
+
+Future<void> _pumpCard(
+  WidgetTester tester, {
+  required EuiccProfile profile,
+  Locale locale = const Locale('en'),
+  VoidCallback? onEnable,
+  VoidCallback? onDisable,
+  VoidCallback? onRename,
+  VoidCallback? onDelete,
+  Size surfaceSize = const Size(360, 800),
+  TextScaler textScaler = TextScaler.noScaling,
+}) async {
+  await tester.binding.setSurfaceSize(surfaceSize);
+  addTearDown(() => tester.binding.setSurfaceSize(null));
+
+  await tester.pumpWidget(
+    MaterialApp(
+      locale: locale,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context).copyWith(textScaler: textScaler),
+        child: child!,
+      ),
+      home: Scaffold(
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(12),
+          child: ProfileCard(
+            profile: profile,
+            onEnable: onEnable,
+            onDisable: onDisable,
+            onRename: onRename,
+            onDelete: onDelete,
+          ),
+        ),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+}

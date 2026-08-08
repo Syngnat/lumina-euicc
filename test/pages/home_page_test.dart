@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lumina_euicc/models/euicc_models.dart';
+import 'package:lumina_euicc/pages/download_page.dart';
 import 'package:lumina_euicc/pages/home_page.dart';
 import 'package:lumina_euicc/services/providers.dart';
 
@@ -144,7 +145,225 @@ void main() {
 
     expect(find.text('Downloaded profile'), findsOneWidget);
   });
+
+  testWidgets('the add-profile FAB opens download with the current channel',
+      (tester) async {
+    const channel = EuiccChannelInfo(
+      slotId: 1,
+      portId: 0,
+      seId: '0',
+      label: 'Phone slot 1',
+      type: 'omapi',
+    );
+    final bridge = FakeEuiccBridge()
+      ..channels = const [channel]
+      ..profiles = const [_profile];
+    addTearDown(bridge.dispose);
+
+    await _pumpHome(tester, bridge);
+    await tester.pumpAndSettle();
+    expect(find.text('giffgaff'), findsWidgets);
+
+    final fab = tester.widget<FloatingActionButton>(
+      find.byKey(const Key('newEsimButton')),
+    );
+    expect(fab.onPressed, isNotNull);
+    await tester.tap(find.byKey(const Key('newEsimButton')));
+    await tester.pumpAndSettle();
+
+    final page = tester.widget<DownloadPage>(find.byType(DownloadPage));
+    expect(page.channel.key, channel.key);
+  });
+
+  testWidgets('the add-profile FAB waits for the initial channel probe',
+      (tester) async {
+    const channel = EuiccChannelInfo(
+      slotId: 1,
+      portId: 0,
+      seId: '0',
+      label: 'Phone slot 1',
+      type: 'omapi',
+    );
+    final channels = Completer<List<EuiccChannelInfo>>();
+    final bridge = _DeferredChannelsBridge(channels.future)
+      ..profiles = const [_profile];
+    addTearDown(bridge.dispose);
+
+    await _pumpHome(tester, bridge);
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('newEsimButton')));
+    await tester.pump();
+
+    channels.complete(const [channel]);
+    await tester.pumpAndSettle();
+
+    final page = tester.widget<DownloadPage>(find.byType(DownloadPage));
+    expect(page.channel.key, channel.key);
+  });
+
+  testWidgets('the add-profile FAB explains an empty channel list',
+      (tester) async {
+    final bridge = FakeEuiccBridge();
+    addTearDown(bridge.dispose);
+
+    await _pumpHome(tester, bridge);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('newEsimButton')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(
+        of: find.byType(SnackBar),
+        matching: find.text(
+          'Insert a compatible removable eUICC, or connect a USB CCID reader.',
+        ),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('the add-profile FAB reports a failed channel probe',
+      (tester) async {
+    final bridge = _FailingChannelsBridge();
+    addTearDown(bridge.dispose);
+
+    await _pumpHome(tester, bridge);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('newEsimButton')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(
+        of: find.byType(SnackBar),
+        matching: find.textContaining(
+          'Channel error: Bad state: channel probe failed',
+        ),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('the add-profile FAB uses the second selected channel',
+      (tester) async {
+    const first = EuiccChannelInfo(
+      slotId: 0,
+      portId: 0,
+      seId: 'first',
+      label: 'First slot',
+      type: 'omapi',
+    );
+    const second = EuiccChannelInfo(
+      slotId: 1,
+      portId: 2,
+      seId: 'second',
+      label: 'Second slot',
+      type: 'usb',
+    );
+    final bridge = FakeEuiccBridge()
+      ..channels = const [first, second]
+      ..profiles = const [_profile];
+    addTearDown(bridge.dispose);
+
+    await _pumpHome(tester, bridge);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(ChoiceChip).at(1));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('newEsimButton')));
+    await tester.pumpAndSettle();
+
+    final page = tester.widget<DownloadPage>(find.byType(DownloadPage));
+    expect(page.channel.key, second.key);
+  });
+
+  testWidgets('the add-profile FAB reports a navigation failure',
+      (tester) async {
+    const channel = EuiccChannelInfo(
+      slotId: 1,
+      portId: 0,
+      seId: '0',
+      label: 'Phone slot 1',
+      type: 'omapi',
+    );
+    final bridge = FakeEuiccBridge()..channels = const [channel];
+    addTearDown(bridge.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [euiccBridgeProvider.overrideWithValue(bridge)],
+        child: MediaQuery(
+          data: const MediaQueryData(size: Size(390, 844)),
+          child: Localizations(
+            locale: const Locale('en'),
+            delegates: const [
+              DefaultMaterialLocalizations.delegate,
+              DefaultWidgetsLocalizations.delegate,
+            ],
+            child: Directionality(
+              textDirection: TextDirection.ltr,
+              child: Theme(
+                data: ThemeData(),
+                child: ScaffoldMessenger(
+                  child: Overlay(
+                    initialEntries: [
+                      OverlayEntry(builder: (_) => const HomePage()),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('newEsimButton')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(
+        of: find.byType(SnackBar),
+        matching: find.textContaining(
+          'Channel error: Navigator operation requested',
+        ),
+      ),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
 }
 
 List<EuiccProfile> bridgeProfilesFor(int slotId, EuiccProfile profileA) =>
     slotId == 0 ? [profileA] : const [];
+
+const _profile = EuiccProfile(
+  iccid: '8944100000000000001',
+  name: 'giffgaff',
+  provider: 'giffgaff',
+  enabled: false,
+  profileClass: 'operational',
+  seq: 1,
+);
+
+Future<void> _pumpHome(WidgetTester tester, FakeEuiccBridge bridge) =>
+    tester.pumpWidget(
+      ProviderScope(
+        overrides: [euiccBridgeProvider.overrideWithValue(bridge)],
+        child: const MaterialApp(home: HomePage()),
+      ),
+    );
+
+class _DeferredChannelsBridge extends FakeEuiccBridge {
+  _DeferredChannelsBridge(this.result);
+
+  final Future<List<EuiccChannelInfo>> result;
+
+  @override
+  Future<List<EuiccChannelInfo>> listChannels() => result;
+}
+
+class _FailingChannelsBridge extends FakeEuiccBridge {
+  @override
+  Future<List<EuiccChannelInfo>> listChannels() async {
+    throw StateError('channel probe failed');
+  }
+}

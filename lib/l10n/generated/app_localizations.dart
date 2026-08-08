@@ -140,6 +140,66 @@ abstract class AppLocalizations {
   /// **'Compatibility check'**
   String get compatibilityCheck;
 
+  /// No description provided for @compatibilityOverviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Compatibility overview'**
+  String get compatibilityOverviewTitle;
+
+  /// No description provided for @compatibilityDeviceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Device'**
+  String get compatibilityDeviceLabel;
+
+  /// No description provided for @compatibilityAndroidLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Android'**
+  String get compatibilityAndroidLabel;
+
+  /// No description provided for @compatibilityOmapiSlotsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'OMAPI-enumerated SIM slots'**
+  String get compatibilityOmapiSlotsLabel;
+
+  /// No description provided for @compatibilityIsdrReachedSlotsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'ISD-R access check reached'**
+  String get compatibilityIsdrReachedSlotsLabel;
+
+  /// No description provided for @compatibilityIsdrAuthorizedSlotsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Authorized ISD-R access'**
+  String get compatibilityIsdrAuthorizedSlotsLabel;
+
+  /// No description provided for @compatibilityAraMDeniedSlotsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'ARA-M / access control denied'**
+  String get compatibilityAraMDeniedSlotsLabel;
+
+  /// No description provided for @compatibilityDetailsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Detailed diagnostics'**
+  String get compatibilityDetailsTitle;
+
+  /// No description provided for @compatibilityNoSlots.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get compatibilityNoSlots;
+
+  /// No description provided for @compatibilitySlotName.
+  ///
+  /// In en, this message translates to:
+  /// **'SIM {slotId}'**
+  String compatibilitySlotName(int slotId);
+
   /// No description provided for @channels.
   ///
   /// In en, this message translates to:
@@ -248,11 +308,35 @@ abstract class AppLocalizations {
   /// **'Provider'**
   String get provider;
 
+  /// No description provided for @profileRegionUnitedKingdom.
+  ///
+  /// In en, this message translates to:
+  /// **'United Kingdom'**
+  String get profileRegionUnitedKingdom;
+
+  /// No description provided for @profileRegionGlobal.
+  ///
+  /// In en, this message translates to:
+  /// **'Global'**
+  String get profileRegionGlobal;
+
+  /// No description provided for @profileRegionUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Region unknown'**
+  String get profileRegionUnknown;
+
   /// No description provided for @iccidCopied.
   ///
   /// In en, this message translates to:
   /// **'ICCID copied'**
   String get iccidCopied;
+
+  /// No description provided for @iccidCopyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Long-press to copy ICCID'**
+  String get iccidCopyHint;
 
   /// No description provided for @profileSummary.
   ///
@@ -371,7 +455,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutDescription.
   ///
   /// In en, this message translates to:
-  /// **'Lumina eUICC — Flutter UI aligned with EasyEUICC capabilities.\nCore LPA runs in the Android native bridge.'**
+  /// **'Lumina eUICC — a modern Flutter interface for removable eUICC management.\nCore LPA runs in the Android native bridge.'**
   String get aboutDescription;
 
   /// No description provided for @legalAndOpenSource.
@@ -684,19 +768,19 @@ abstract class AppLocalizations {
   /// No description provided for @compatibilityOmapiSlotAuthorized.
   ///
   /// In en, this message translates to:
-  /// **'ISD-R opened for this app certificate.'**
+  /// **'ISD-R opened for the current app identity.'**
   String get compatibilityOmapiSlotAuthorized;
 
   /// No description provided for @compatibilityOmapiSlotAccessDenied.
   ///
   /// In en, this message translates to:
-  /// **'Phone slot {slotId} is reachable, but OMAPI / ARA-M denied this app certificate.'**
+  /// **'Phone slot {slotId} is reachable, but OMAPI access control (normally ARA-M / ARF for UICC) did not authorize the current app identity.'**
   String compatibilityOmapiSlotAccessDenied(int slotId);
 
   /// No description provided for @compatibilityOmapiSlotIsdrUnavailable.
   ///
   /// In en, this message translates to:
-  /// **'Phone slot {slotId} is reachable, but the default ISD-R AID returned no channel.'**
+  /// **'Phone slot {slotId} is reachable, but none of the configured ISD-R AIDs opened a channel.'**
   String compatibilityOmapiSlotIsdrUnavailable(int slotId);
 
   /// No description provided for @compatibilityOmapiSlotFailed.
@@ -768,7 +852,7 @@ abstract class AppLocalizations {
   /// No description provided for @compatibilityRootlessAraMRequired.
   ///
   /// In en, this message translates to:
-  /// **'No root is used or required. For a card in the phone, its ARA-M must authorize Lumina\'s package and signing certificate; an EasyEUICC-only rule does not authorize Lumina. USB CCID uses a separate permission path.'**
+  /// **'No root is used or required. For a card in the phone, its access-control rule must match at least one current Lumina signing certificate; if the rule also binds an Android package, it must match Lumina\'s package. USB CCID uses a separate permission path.'**
   String get compatibilityRootlessAraMRequired;
 }
 

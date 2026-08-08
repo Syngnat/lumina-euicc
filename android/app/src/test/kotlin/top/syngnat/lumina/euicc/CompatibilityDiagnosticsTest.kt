@@ -7,6 +7,38 @@ import org.junit.Test
 
 class CompatibilityDiagnosticsTest {
     @Test
+    fun deviceInfoReportsSupportDetailsWithoutUniqueDeviceOrCardIdentifiers() {
+        val diagnostics = buildCompatibilityDiagnostics(
+            CompatibilityDiagnosticsInput(
+                packageName = "top.syngnat.lumina.euicc",
+                signingCertificateSha1s = listOf("AA:BB"),
+                deviceBrand = "OPPO",
+                deviceName = "OP61C1L1",
+                deviceModel = "PME110",
+                androidRelease = "16",
+                androidSdkInt = 36,
+                omapiPresent = true,
+            )
+        )
+
+        val deviceInfo = diagnostics.single { it.code == "device_info" }
+        assertTrue(deviceInfo.ok)
+        assertEquals("OPPO", deviceInfo.arguments["brand"])
+        assertEquals("OP61C1L1", deviceInfo.arguments["device"])
+        assertEquals("PME110", deviceInfo.arguments["model"])
+        assertEquals("16", deviceInfo.arguments["androidRelease"])
+        assertEquals(36, deviceInfo.arguments["androidSdkInt"])
+        assertEquals(
+            setOf("brand", "device", "model", "androidRelease", "androidSdkInt"),
+            deviceInfo.arguments.keys,
+        )
+        assertFalse(deviceInfo.arguments.containsKey("serial"))
+        assertFalse(deviceInfo.arguments.containsKey("androidId"))
+        assertFalse(deviceInfo.arguments.containsKey("eid"))
+        assertFalse(deviceInfo.arguments.containsKey("iccid"))
+    }
+
+    @Test
     fun appIdentityReportsPackageAndColonSeparatedSha1WithoutCardIdentifiers() {
         val sha1 = certificateSha1(byteArrayOf(0x01, 0x23, 0x45, 0x67))
         val diagnostics = buildCompatibilityDiagnostics(
@@ -74,7 +106,8 @@ class CompatibilityDiagnosticsTest {
         assertEquals("omapi_slot_access_denied", slot.code)
         assertFalse(slot.ok)
         assertTrue(slot.detail.contains("ARA-M"))
-        assertTrue(slot.detail.contains("denied"))
+        assertTrue(slot.detail.contains("current app identity"))
+        assertFalse(slot.detail.contains("this app certificate"))
         assertFalse(slot.detail.contains("secret vendor exception text"))
         assertEquals(1, slot.arguments["slotId"])
     }
@@ -109,7 +142,8 @@ class CompatibilityDiagnosticsTest {
         val rootless = diagnostics.single { it.title == "Rootless access / ARA-M" }
         assertFalse(rootless.ok)
         assertTrue(rootless.detail.contains("No root"))
-        assertTrue(rootless.detail.contains("EasyEUICC-only"))
+        assertTrue(rootless.detail.contains("current Lumina signing certificate"))
+        assertTrue(rootless.detail.contains("if the rule also binds an Android package"))
         assertTrue(rootless.detail.contains("Lumina"))
     }
 
@@ -150,6 +184,9 @@ class CompatibilityDiagnosticsTest {
             diagnostics.single { it.code == "omapi_slot_failed" }
                 .detail.contains("IOException")
         )
+        val unavailable = diagnostics.single { it.code == "omapi_slot_isdr_unavailable" }
+        assertTrue(unavailable.detail.contains("configured ISD-R AIDs"))
+        assertFalse(unavailable.detail.contains("default ISD-R AID"))
     }
 
     @Test

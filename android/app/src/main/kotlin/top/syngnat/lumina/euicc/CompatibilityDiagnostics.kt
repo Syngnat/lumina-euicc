@@ -41,6 +41,11 @@ internal data class CompatibilityDiagnosticsInput(
     val packageName: String,
     val signingCertificateSha1s: List<String>,
     val omapiPresent: Boolean,
+    val deviceBrand: String = "",
+    val deviceName: String = "",
+    val deviceModel: String = "",
+    val androidRelease: String = "",
+    val androidSdkInt: Int = 0,
     val omapiServiceFailureType: String? = null,
     val slotProbes: List<OmapiSlotProbe> = emptyList(),
     val openPorts: List<Pair<Int, Int>> = emptyList(),
@@ -78,6 +83,22 @@ internal fun buildCompatibilityDiagnostics(
                 arguments = mapOf(
                     "packageName" to input.packageName,
                     "signingCertificateSha1s" to input.signingCertificateSha1s,
+                ),
+            )
+        )
+        add(
+            CompatibilityDiagnosticItem(
+                code = "device_info",
+                title = "Device and Android",
+                ok = true,
+                detail = "${input.deviceBrand} ${input.deviceModel} (${input.deviceName}); " +
+                    "Android ${input.androidRelease} (API ${input.androidSdkInt}).",
+                arguments = mapOf(
+                    "brand" to input.deviceBrand,
+                    "device" to input.deviceName,
+                    "model" to input.deviceModel,
+                    "androidRelease" to input.androidRelease,
+                    "androidSdkInt" to input.androidSdkInt,
                 ),
             )
         )
@@ -145,11 +166,12 @@ internal fun buildCompatibilityDiagnostics(
                     ok = probe.status == OmapiSlotProbeStatus.AUTHORIZED,
                     detail = when (probe.status) {
                         OmapiSlotProbeStatus.AUTHORIZED ->
-                            "ISD-R logical channel opened for this app certificate."
+                            "ISD-R logical channel opened for the current app identity."
                         OmapiSlotProbeStatus.ACCESS_DENIED ->
-                            "UICC reader is reachable, but OMAPI / ARA-M denied this app certificate."
+                            "UICC reader is reachable, but OMAPI access control (normally ARA-M / ARF " +
+                                "for UICC) did not authorize the current app identity."
                         OmapiSlotProbeStatus.ISDR_UNAVAILABLE ->
-                            "UICC reader is reachable, but the default ISD-R AID returned no channel."
+                            "UICC reader is reachable, but none of the configured ISD-R AIDs opened a channel."
                         OmapiSlotProbeStatus.FAILED ->
                             "Read-only OMAPI probe failed (${probe.failureType ?: "unknown error"})."
                     },
@@ -220,9 +242,10 @@ internal fun buildCompatibilityDiagnostics(
                 detail = if (input.lpaChannelValid) {
                     "No root is used or required; a real LPA channel is available."
                 } else {
-                    "No root is used or required. For a card in the phone, its ARA-M must authorize " +
-                        "Lumina's package and signing certificate; an EasyEUICC-only rule does not " +
-                        "authorize Lumina. USB CCID uses a separate permission path."
+                    "No root is used or required. For a card in the phone, its access-control rule " +
+                        "must match at least one current Lumina signing certificate; if the rule " +
+                        "also binds an Android package, it must match Lumina's package. USB CCID " +
+                        "uses a separate permission path."
                 },
             )
         )

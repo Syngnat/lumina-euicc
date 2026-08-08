@@ -45,7 +45,7 @@ import java.util.concurrent.CancellationException
 import java.util.concurrent.atomic.AtomicReference
 
 /**
- * Flutter bridge for EasyEUICC-aligned LPA operations.
+ * Flutter bridge for removable eUICC LPA operations.
  *
  * Prefers the real OpenEUICC / lpac-jni stack. Debug builds can fall back to
  * an in-memory mock; release builds report an unavailable real channel.
@@ -540,6 +540,11 @@ class EuiccBridgePlugin :
                 packageName = appContext.packageName,
                 signingCertificateSha1s = signingCertificateSha1s(),
                 omapiPresent = omapiPresent,
+                deviceBrand = Build.BRAND,
+                deviceName = Build.DEVICE,
+                deviceModel = Build.MODEL,
+                androidRelease = Build.VERSION.RELEASE,
+                androidSdkInt = Build.VERSION.SDK_INT,
                 omapiServiceFailureType = omapiServiceFailureType,
                 slotProbes = slotProbes,
                 openPorts = openPorts,
