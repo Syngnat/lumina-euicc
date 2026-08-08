@@ -10,7 +10,7 @@ import org.gradle.language.base.artifact.SourcesArtifact
 gradle.projectsEvaluated {
     def appProject = gradle.rootProject.findProject(":app")
     if (appProject == null) {
-        throw new GradleException("Android :app project was not found")
+        return
     }
 
     appProject.tasks.register("luminaCollectRuntimeDependencySources") {
