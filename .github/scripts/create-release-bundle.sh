@@ -280,7 +280,8 @@ EOF
   echo "Target Android API: 35"
   echo "Compile Android API: 36"
   echo "ABIs: armeabi-v7a, arm64-v8a, x86_64"
-  echo "Expected signing certificate SHA-256: ${EXPECTED_RELEASE_CERT_SHA256:-not-set}"
+  echo "Expected signer SHA-1 sequence: ${EXPECTED_RELEASE_CERT_SHA1S:-not-set}"
+  echo "Expected signer SHA-256 sequence: ${EXPECTED_RELEASE_CERT_SHA256S:-not-set}"
   echo
   echo "Flutter toolchain:"
   printf '%s\n' "${flutter_toolchain}"

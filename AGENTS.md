@@ -15,7 +15,7 @@
 | Primary platforms | Android 9+ (API 28); Flutter UI |
 | Not a goal | Managing **internal** phone eSIM without system privilege (same limit as EasyEUICC unprivileged) |
 
-Non-root operation is a hard product constraint: never add Root/Magisk/Shizuku flows, system-app installation requirements, or privileged telephony permissions. The supported in-phone path is OMAPI to a removable eUICC whose ARA-M authorizes Lumina's certificate; USB CCID is the alternative. A card that only authorizes EasyEUICC's unrelated signing certificate will not authorize Lumina.
+Non-root operation is a hard product constraint: never add Root/Magisk/Shizuku flows, system-app installation requirements, or privileged telephony permissions. The supported in-phone path is OMAPI to a removable eUICC whose ARA-M authorizes at least one current Lumina APK signer; USB CCID is the alternative. Release APKs from `0.1.1` onward use one stable four-current-signer set (Lumina, Sakura, ShiinaSekiu Community, and 9eSIM). EasyEUICC's unrelated `2A…` identity is not included because its private key is not public.
 
 ### Product goal (user request)
 
@@ -59,6 +59,7 @@ OMAPI (removable eUICC)  or  USB CCID reader
 | `third_party/OpenEUICC/` | Vendored upstream sources; preserve each component's license files |
 | `docs/FEATURE_PARITY.md` | Native/API capability mapping; not proof of Flutter UI exposure |
 | `docs/NATIVE_INTEGRATION.md` | Integration status & build notes |
+| `docs/COMMUNITY_SIGNING.md` | Four-signer identity, ARA-M, migration, provenance, and update policy |
 | `LICENSE` / `LICENSES_SCOPE.md` | GPL-3.0-only text and precise project/third-party license boundary |
 | `NOTICE.md` / `THIRD_PARTY_NOTICES.md` | Copyright attribution and component-specific third-party terms |
 
@@ -122,6 +123,10 @@ Activation codes: `LPA:1$smdp.example.com$matchingId...` (parsed like OpenEUICC 
 - Do **not** ship under EasyEUICC package name `im.angry.easyeuicc` (upstream asks derivatives to rename)
 - Do **not** strip `NOTICE.md`, `THIRD_PARTY_NOTICES.md`,
   `LICENSES_SCOPE.md`, or upstream license files.
+- Community-signing provenance and the upstream MIT notice must remain in
+  `docs/COMMUNITY_SIGNING.md` and `THIRD_PARTY_NOTICES.md`. Never commit or
+  package a keystore, private key, or password, including publicly reproducible
+  community material.
 
 ## Build (Windows / agent on a real Android host)
 
@@ -146,9 +151,16 @@ Requirements:
 
 OpenEUICC `lpac-jni` uses `externalNativeBuild.ndkBuild`; pub package `jni` 1.0.3 separately uses `externalNativeBuild.cmake`. The Lumina app compiles against SDK 36 and targets SDK 35; vendored `app-common` and `lpac-jni` compile against SDK 35. Keep both SDK platforms, both Build Tools versions, both NDKs, and CMake in CI unless those locked dependencies change.
 
-Verified on Windows on 2026-08-08 after the legal-screen/native-ZXing changes: `flutter analyze --no-pub` reported no issues, all 21 Flutter tests passed, all 32 Kotlin/JUnit tests passed, and a dedicated-key `:app:assembleRelease` completed successfully. `apksigner` verified that release APK with v2 signing and certificate SHA-256 `1F:C1:52:76:70:A8:0B:2B:B5:A8:1F:FC:D2:D8:D7:82:C2:AD:00:3A:21:8F:2C:AD:42:9D:30:08:81:07:D8:9F`. Release ZIP alignment passed, and every 64-bit native ELF—including `liblpac-jni.so`—had `LOAD` alignment of at least `2**14`. The APK contained the three configured ABIs and both native build paths. This is not real-card validation; consult GitHub Actions for the exact pushed-commit result. Flutter currently warns that Gradle 8.9, AGP 8.7.0, and Kotlin 2.0.21 are nearing its support floor.
+Verified on Windows on 2026-08-08 after the legal-screen/native-ZXing changes: `flutter analyze --no-pub` reported no issues, all 21 Flutter tests passed, all 32 Kotlin/JUnit tests passed, and a dedicated-key `:app:assembleRelease` completed successfully. `apksigner` verified that historical single-signer baseline with v2 signing and certificate SHA-256 `1F:C1:52:76:70:A8:0B:2B:B5:A8:1F:FC:D2:D8:D7:82:C2:AD:00:3A:21:8F:2C:AD:42:9D:30:08:81:07:D8:9F`. Release ZIP alignment passed, and every 64-bit native ELF—including `liblpac-jni.so`—had `LOAD` alignment of at least `2**14`. The APK contained the three configured ABIs and both native build paths. This baseline predates community multi-signing and does not validate the new four-signer release chain. It is not real-card validation; consult GitHub Actions for the exact pushed-commit result. Flutter currently warns that Gradle 8.9, AGP 8.7.0, and Kotlin 2.0.21 are nearing its support floor.
 
-GitHub Actions uses a `verify` job for pull requests/main/manual/version-tag runs and a separate dedicated-key `release` job only on trusted `main` or `v*` refs allowed by the `release-signing` Environment. Never move signing secrets into source, logs, PR jobs, artifacts, or the `contents: write` publishing job. CI builds universal, arm64-v8a, armeabi-v7a, and x86_64 APKs and verifies package/SDK/ABI metadata, v2 signing, one signer, the fixed certificate, ZIP alignment, and every arm64-v8a/x86_64 ELF. A matching `v<version-name>` tag creates a GitHub Release only after the exact-commit source, hosted Pub sources, available Maven source JARs/POMs, exact Flutter framework/engine source references, source manifests, `SOURCE_INFO.txt`, checksums, dependency inventories, and nested license archive have been produced and verified in the same run.
+GitHub Actions uses a `verify` job for pull requests/main/manual/version-tag runs and a separate `release` job only on trusted `main` or `v*` refs allowed by the `release-signing` Environment. Never move signing material into source, logs, PR jobs, artifacts, or the `contents: write` publishing job. CI builds universal, arm64-v8a, armeabi-v7a, and x86_64 APKs with v1/v3 disabled and must verify package/SDK/ABI metadata, APK Signature Scheme v2, disabled v3 signing, exactly four current signers with the fingerprints in `docs/COMMUNITY_SIGNING.md`, ZIP alignment, and every arm64-v8a/x86_64 ELF. A matching `v<version-name>` tag creates a GitHub Release only after the exact-commit source, hosted Pub sources, available Maven source JARs/POMs, exact Flutter framework/engine source references, source manifests, `SOURCE_INFO.txt`, checksums, dependency inventories, and nested license archive have been produced and verified in the same run.
+
+Any installed `0.1.0` APK with only the original Lumina signer must be
+uninstalled once before the four-signer APK can be installed. Thereafter the
+exact four-signer set is immutable for update compatibility. A certificate-only
+ARA-M rule may match any current signer; a package-bound rule must also match
+`top.syngnat.lumina.euicc`. Do not claim this works on a physical card without
+device/log evidence.
 
 Use CI or a sufficiently provisioned Android host for native builds. A failed or unattempted low-resource build is not validation evidence.
 

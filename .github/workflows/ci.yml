@@ -137,7 +137,8 @@ jobs:
 
     env:
       EXPECTED_PACKAGE_ID: top.syngnat.lumina.euicc
-      EXPECTED_RELEASE_CERT_SHA256: 1fc1527670a80b2bb5a81ffcd2d8d782c2ad003a218f2cad429d30088107d89f
+      EXPECTED_RELEASE_CERT_SHA1S: 100ca7fd2ce4b712ba3c884cae20fd3325ed85e0,65d0571854afec519a90f92d7c5d8cf8148da373,c47350c7ba682b34a3e584a0d58463ea42b1ad73,d1c0f48b370e74d4ea4770ed4c3cd70a3198d31f
+      EXPECTED_RELEASE_CERT_SHA256S: 1fc1527670a80b2bb5a81ffcd2d8d782c2ad003a218f2cad429d30088107d89f,dd0dddbee79fc418ccf1523e670ff62f22926ed76a8ff50b1b63106195deab13,4139278aacce8338c03dc9a6b0172c1880e0a4949ff3e05292c2e781765026fa,6966004ad0161165335f9204f8f5a52df49fe068c9545c0c589c23221af8d3a4
 
     steps:
       - name: Check out repository
@@ -199,23 +200,51 @@ jobs:
       - name: Resolve locked Flutter dependencies
         run: flutter pub get --enforce-lockfile
 
-      - name: Configure dedicated release signing
+      - name: Configure release signer material
         shell: bash
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          COMMUNITY_SAKURA_KEYSTORE_BASE64: ${{ secrets.COMMUNITY_SAKURA_KEYSTORE_BASE64 }}
+          COMMUNITY_SAKURA_KEYSTORE_PASSWORD: ${{ secrets.COMMUNITY_SAKURA_KEYSTORE_PASSWORD }}
+          COMMUNITY_NEKOKO_KEYSTORE_BASE64: ${{ secrets.COMMUNITY_NEKOKO_KEYSTORE_BASE64 }}
+          COMMUNITY_NEKOKO_KEYSTORE_PASSWORD: ${{ secrets.COMMUNITY_NEKOKO_KEYSTORE_PASSWORD }}
+          COMMUNITY_9ESIM_KEYSTORE_BASE64: ${{ secrets.COMMUNITY_9ESIM_KEYSTORE_BASE64 }}
+          COMMUNITY_9ESIM_KEYSTORE_PASSWORD: ${{ secrets.COMMUNITY_9ESIM_KEYSTORE_PASSWORD }}
         run: |
           set -euo pipefail
           : "${ANDROID_KEYSTORE_BASE64:?Missing release-signing environment secret ANDROID_KEYSTORE_BASE64}"
           : "${ANDROID_KEYSTORE_PASSWORD:?Missing release-signing environment secret ANDROID_KEYSTORE_PASSWORD}"
           : "${ANDROID_KEY_ALIAS:?Missing release-signing environment secret ANDROID_KEY_ALIAS}"
           : "${ANDROID_KEY_PASSWORD:?Missing release-signing environment secret ANDROID_KEY_PASSWORD}"
+          : "${COMMUNITY_SAKURA_KEYSTORE_BASE64:?Missing release-signing environment secret COMMUNITY_SAKURA_KEYSTORE_BASE64}"
+          : "${COMMUNITY_SAKURA_KEYSTORE_PASSWORD:?Missing release-signing environment secret COMMUNITY_SAKURA_KEYSTORE_PASSWORD}"
+          : "${COMMUNITY_NEKOKO_KEYSTORE_BASE64:?Missing release-signing environment secret COMMUNITY_NEKOKO_KEYSTORE_BASE64}"
+          : "${COMMUNITY_NEKOKO_KEYSTORE_PASSWORD:?Missing release-signing environment secret COMMUNITY_NEKOKO_KEYSTORE_PASSWORD}"
+          : "${COMMUNITY_9ESIM_KEYSTORE_BASE64:?Missing release-signing environment secret COMMUNITY_9ESIM_KEYSTORE_BASE64}"
+          : "${COMMUNITY_9ESIM_KEYSTORE_PASSWORD:?Missing release-signing environment secret COMMUNITY_9ESIM_KEYSTORE_PASSWORD}"
 
           keystore_path="${RUNNER_TEMP}/lumina-euicc-release.jks"
+          sakura_keystore_path="${RUNNER_TEMP}/community-sakura.jks"
+          nekoko_keystore_path="${RUNNER_TEMP}/community-nekoko.jks"
+          ninesim_keystore_path="${RUNNER_TEMP}/community-9esim.jks"
           printf '%s' "${ANDROID_KEYSTORE_BASE64}" | base64 --decode > "${keystore_path}"
-          chmod 600 "${keystore_path}"
+          printf '%s' "${COMMUNITY_SAKURA_KEYSTORE_BASE64}" | base64 --decode > "${sakura_keystore_path}"
+          printf '%s' "${COMMUNITY_NEKOKO_KEYSTORE_BASE64}" | base64 --decode > "${nekoko_keystore_path}"
+          printf '%s' "${COMMUNITY_9ESIM_KEYSTORE_BASE64}" | base64 --decode > "${ninesim_keystore_path}"
+          chmod 600 \
+            "${keystore_path}" \
+            "${sakura_keystore_path}" \
+            "${nekoko_keystore_path}" \
+            "${ninesim_keystore_path}"
+          {
+            printf 'LUMINA_KEYSTORE_PATH=%s\n' "${keystore_path}"
+            printf 'COMMUNITY_SAKURA_KEYSTORE_PATH=%s\n' "${sakura_keystore_path}"
+            printf 'COMMUNITY_NEKOKO_KEYSTORE_PATH=%s\n' "${nekoko_keystore_path}"
+            printf 'COMMUNITY_9ESIM_KEYSTORE_PATH=%s\n' "${ninesim_keystore_path}"
+          } >> "${GITHUB_ENV}"
           {
             printf 'storeFile=%s\n' "${keystore_path}"
             printf 'storePassword=%s\n' "${ANDROID_KEYSTORE_PASSWORD}"
@@ -224,7 +253,7 @@ jobs:
           } > android/key.properties
           chmod 600 android/key.properties
 
-      - name: Build dedicated-key universal and split APKs
+      - name: Build universal and split APKs
         shell: bash
         run: |
           set -euo pipefail
@@ -241,6 +270,25 @@ jobs:
           cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk \
             "${release_apk_dir}/app-armeabi-v7a-release.apk"
           cp build/app/outputs/flutter-apk/app-x86_64-release.apk \
+            "${release_apk_dir}/app-x86_64-release.apk"
+
+      - name: Apply dedicated and community signer set
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          COMMUNITY_SAKURA_KEYSTORE_PASSWORD: ${{ secrets.COMMUNITY_SAKURA_KEYSTORE_PASSWORD }}
+          COMMUNITY_NEKOKO_KEYSTORE_PASSWORD: ${{ secrets.COMMUNITY_NEKOKO_KEYSTORE_PASSWORD }}
+          COMMUNITY_9ESIM_KEYSTORE_PASSWORD: ${{ secrets.COMMUNITY_9ESIM_KEYSTORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          release_apk_dir="${RUNNER_TEMP}/release-apks"
+          bash .github/scripts/sign-release-apks.sh \
+            "${ANDROID_HOME}/build-tools/35.0.0/apksigner" \
+            "${release_apk_dir}/app-universal-release.apk" \
+            "${release_apk_dir}/app-arm64-v8a-release.apk" \
+            "${release_apk_dir}/app-armeabi-v7a-release.apk" \
             "${release_apk_dir}/app-x86_64-release.apk"
 
       - name: Verify release signatures and Android compatibility
@@ -261,19 +309,11 @@ jobs:
 
           for variant in universal arm64-v8a armeabi-v7a x86_64; do
             apk="${apks[${variant}]}"
-            verify_output="$("${apksigner}" verify --verbose --print-certs "${apk}")"
-            printf '%s\n' "${verify_output}"
-            grep -Fq "Verified using v2 scheme (APK Signature Scheme v2): true" \
-              <<<"${verify_output}"
-            grep -Fq "Number of signers: 1" <<<"${verify_output}"
-            actual_cert_sha256="$(
-              printf '%s\n' "${verify_output}" |
-                sed -n 's/^Signer #1 certificate SHA-256 digest: //p'
-            )"
-            if [[ "${actual_cert_sha256}" != "${EXPECTED_RELEASE_CERT_SHA256}" ]]; then
-              echo "Unexpected release certificate for ${variant}: ${actual_cert_sha256}" >&2
-              exit 1
-            fi
+            bash .github/scripts/verify-release-signers.sh \
+              "${apksigner}" \
+              "${apk}" \
+              "${EXPECTED_RELEASE_CERT_SHA1S}" \
+              "${EXPECTED_RELEASE_CERT_SHA256S}"
 
             badging="$("${aapt}" dump badging "${apk}")"
             grep -Fq "package: name='${EXPECTED_PACKAGE_ID}'" <<<"${badging}"
@@ -316,7 +356,12 @@ jobs:
         if: always()
         shell: bash
         run: |
-          rm -f android/key.properties "${RUNNER_TEMP}/lumina-euicc-release.jks"
+          rm -f \
+            android/key.properties \
+            "${RUNNER_TEMP}/lumina-euicc-release.jks" \
+            "${RUNNER_TEMP}/community-sakura.jks" \
+            "${RUNNER_TEMP}/community-nekoko.jks" \
+            "${RUNNER_TEMP}/community-9esim.jks"
 
       - name: Create exact-source release bundle
         id: release_bundle

@@ -33,6 +33,27 @@ class CompatibilityDiagnosticsTest {
     }
 
     @Test
+    fun appIdentityReportsEveryCurrentSignerForMultiSignedReleases() {
+        val signerSha1s = listOf(
+            "10:0C:A7:FD:2C:E4:B7:12:BA:3C:88:4C:AE:20:FD:33:25:ED:85:E0",
+            "65:D0:57:18:54:AF:EC:51:9A:90:F9:2D:7C:5D:8C:F8:14:8D:A3:73",
+            "C4:73:50:C7:BA:68:2B:34:A3:E5:84:A0:D5:84:63:EA:42:B1:AD:73",
+            "D1:C0:F4:8B:37:0E:74:D4:EA:47:70:ED:4C:3C:D7:0A:31:98:D3:1F",
+        )
+        val diagnostics = buildCompatibilityDiagnostics(
+            CompatibilityDiagnosticsInput(
+                packageName = "top.syngnat.lumina.euicc",
+                signingCertificateSha1s = signerSha1s,
+                omapiPresent = true,
+            )
+        )
+
+        val identity = diagnostics.first()
+        assertEquals(signerSha1s, identity.arguments["signingCertificateSha1s"])
+        signerSha1s.forEach { sha1 -> assertTrue(identity.detail.contains(sha1)) }
+    }
+
+    @Test
     fun araMAccessDenialIsReportedForItsSlotWithoutExceptionMessage() {
         val diagnostics = buildCompatibilityDiagnostics(
             CompatibilityDiagnosticsInput(

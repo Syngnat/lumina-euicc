@@ -66,7 +66,7 @@ the legal-screen and native-ZXing changes:
 The native baseline was rerun after those changes:
 
 - `android/gradlew.bat :app:testDebugUnitTest`: 32 tests passed, 0 failures/errors, including the native-ZXing session tests.
-- Universal and `--split-per-abi` release builds succeeded with the dedicated release key; `apksigner verify --verbose --print-certs` passed using APK Signature Scheme v2 for all four APKs.
+- Universal and `--split-per-abi` release builds succeeded with the dedicated release key; `apksigner verify --verbose --print-certs` passed using APK Signature Scheme v2 for all four APKs. This is the historical single-signer baseline and predates the four-current-signer release policy.
 - Release certificate SHA-256: `1F:C1:52:76:70:A8:0B:2B:B5:A8:1F:FC:D2:D8:D7:82:C2:AD:00:3A:21:8F:2C:AD:42:9D:30:08:81:07:D8:9F`.
 - APK metadata: `top.syngnat.lumina.euicc`, version `0.1.0`, compile SDK 36, target SDK 35; the universal APK contains `arm64-v8a`, `armeabi-v7a`, and `x86_64`, while each split APK contains exactly its named ABI.
 - `zipalign -c -P 16 4` passed for all four release APKs. Every arm64-v8a and x86_64 ELF `LOAD` segment has alignment of at least `2**14`; this includes vendored `liblpac-jni.so`.
@@ -78,7 +78,7 @@ This is build/test evidence only. It does not validate OMAPI, ARA-M access, USB 
 `.github/workflows/ci.yml` uses pinned actions on Ubuntu 24.04:
 
 - `verify` runs for pull requests, `main` pushes, version tags, and manual dispatch. It enforces the lockfile, runs Dart analysis, Flutter and Kotlin tests, builds the debug APK, checks package/min/compile/target SDK metadata and ABIs, then checks both APK ZIP alignment and every 64-bit ELF `LOAD` segment for 16 KB compatibility.
-- `release` runs only after `verify` on a trusted `main` ref or matching `v*` tag allowed by the `release-signing` Environment. The job builds universal plus three ABI-specific APKs with the dedicated key and verifies v2 signing, one signer, the expected certificate fingerprint, exact ABI metadata, unprivileged manifest policy, ZIP alignment, and 64-bit ELF alignment.
+- `release` runs only after `verify` on a trusted `main` ref or matching `v*` tag allowed by the `release-signing` Environment. The job builds universal plus three ABI-specific APKs with v1/v3 disabled and one stable set of four current signers: Lumina, Sakura, ShiinaSekiu Community, and 9eSIM. It verifies APK Signature Scheme v2, disabled v3 signing, exactly those four certificate fingerprints, exact ABI metadata, unprivileged manifest policy, ZIP alignment, and 64-bit ELF alignment.
 - `publish_release` runs only for a `v<pubspec version name>` tag already contained in `main`. It downloads the verified artifact with `actions: read` and creates the GitHub Release with `contents: write`; it has no signing environment or keystore secrets.
 
 After verification, a trusted build publishes one Actions artifact containing
@@ -105,7 +105,16 @@ adb shell getconf PAGE_SIZE
 
 `16384` means the device uses 16 KB pages. Regardless of that value, profile discovery and mutations still require a physical-card test and an ARA-M rule matching this app's package/certificate identity.
 
-The dedicated Lumina certificate has ARA-M SHA-1 fingerprint `10:0C:A7:FD:2C:E4:B7:12:BA:3C:88:4C:AE:20:FD:33:25:ED:85:E0`. EasyEUICC-compatible cards commonly authorize EasyEUICC's different certificate; that rule cannot authorize Lumina. For rootless phone-slot use, provision an additional card rule for Lumina (and package `top.syngnat.lumina.euicc` when package-bound), or use a USB CCID reader. This is a card access-control requirement, not an Android runtime permission that the user can approve.
+The four current ARA-M SHA-1 identities are:
+
+- Lumina: `10:0C:A7:FD:2C:E4:B7:12:BA:3C:88:4C:AE:20:FD:33:25:ED:85:E0`;
+- Sakura: `65:D0:57:18:54:AF:EC:51:9A:90:F9:2D:7C:5D:8C:F8:14:8D:A3:73`;
+- ShiinaSekiu Community: `C4:73:50:C7:BA:68:2B:34:A3:E5:84:A0:D5:84:63:EA:42:B1:AD:73`;
+- 9eSIM: `D1:C0:F4:8B:37:0E:74:D4:EA:47:70:ED:4C:3C:D7:0A:31:98:D3:1F`.
+
+A certificate-only ARA-M rule without a package binding may authorize the APK by matching any one of these current signers. A package-bound rule must also match `top.syngnat.lumina.euicc`; a rule bound to an upstream package can still reject Lumina. EasyEUICC's `2A…` identity is not included because its private key is not public. NekokoLPA's `nekokobeef` and `wenzi` identities are also excluded because their key containers cannot be unlocked from public information. This is a card access-control requirement, not an Android runtime permission that the user can approve. See [community multi-signing policy](COMMUNITY_SIGNING.md) for exact provenance and update constraints.
+
+An installed `0.1.0` single-signer Lumina build is not update-compatible with the four-signer APK and must be uninstalled once. Subsequent releases must preserve the exact four-current-signer set. Neither this policy nor CI verification is real-card evidence.
 
 ## License
 
@@ -119,6 +128,9 @@ The dedicated Lumina certificate has ARA-M SHA-1 fingerprint `10:0C:A7:FD:2C:E4:
   archive/manifests, dependency inventories, notices, source metadata, and
   checksums in one artifact. Redistribution must preserve that
   corresponding-source and notice set.
+- The three community signing identities retain the pinned NekokoLPA MIT
+  attribution recorded in `THIRD_PARTY_NOTICES.md`; signing keys and passwords
+  are excluded from project source and release artifacts.
 
 ## Remaining gaps (honest)
 

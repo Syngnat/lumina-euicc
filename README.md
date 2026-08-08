@@ -74,15 +74,34 @@ For later updates, keep using the same APK family when possible. Flutter assigns
 
 Each GitHub Release also includes `SHA256SUMS`, exact-commit project source, dependency-source materials, source metadata, dependency inventories, and license notices from the same trusted build. Verify the APK against `SHA256SUMS`, and keep the matching source and notices with it when redistributing the APK.
 
-If a debug build or an APK signed by another certificate is already installed under `top.syngnat.lumina.euicc`, Android will reject an in-place update. Uninstall that old app first, then install the Release APK. Uninstalling the Android app does not delete profiles stored on the removable eUICC, although the app's local settings are cleared.
+If a debug build or an APK with a different signer set is already installed under `top.syngnat.lumina.euicc`, Android will reject an in-place update. In particular, an installed `0.1.0` APK carrying only the original Lumina signer must be uninstalled once before installing the four-signer Release APK. Uninstalling the Android app does not delete profiles stored on the removable eUICC, although the app's local settings are cleared.
 
 ## Release signing
 
-Release builds use a dedicated project key and never fall back to the Android debug key. Gradle first checks `android/key.properties`, then `%USERPROFILE%/.android/lumina-euicc/key.properties`; start from `android/key.properties.example` and never commit the populated file or keystore.
+Release builds use the Lumina dedicated project key together with three publicly reproducible community keys; they never fall back to the Android debug key. Gradle first checks `android/key.properties`, then `%USERPROFILE%/.android/lumina-euicc/key.properties`; start from `android/key.properties.example` and never commit the populated file or any keystore.
 
-The current dedicated release certificate SHA-256 fingerprint is `1F:C1:52:76:70:A8:0B:2B:B5:A8:1F:FC:D2:D8:D7:82:C2:AD:00:3A:21:8F:2C:AD:42:9D:30:08:81:07:D8:9F`; its ARA-M SHA-1 fingerprint is `10:0C:A7:FD:2C:E4:B7:12:BA:3C:88:4C:AE:20:FD:33:25:ED:85:E0`. This certificate is the identity relevant to future APK updates and card access rules; back up the keystore and its properties together.
+Starting with `0.1.1`, every multi-signed Release APK has the same four current signers:
 
-An EasyEUICC-compatible card normally authorizes EasyEUICC's certificate, not this independently signed app. To use Lumina through the phone's SIM slot without Root, the card must also contain an ARA-M rule for Lumina's SHA-1 fingerprint (and `top.syngnat.lumina.euicc` if the rule binds a package name). Signing Lumina with a dedicated key does not automatically add that rule.
+| Signer | ARA-M SHA-1 fingerprint |
+|---|---|
+| Lumina dedicated release key | `10:0C:A7:FD:2C:E4:B7:12:BA:3C:88:4C:AE:20:FD:33:25:ED:85:E0` |
+| Sakura community key | `65:D0:57:18:54:AF:EC:51:9A:90:F9:2D:7C:5D:8C:F8:14:8D:A3:73` |
+| ShiinaSekiu Community Key | `C4:73:50:C7:BA:68:2B:34:A3:E5:84:A0:D5:84:63:EA:42:B1:AD:73` |
+| 9eSIM community key | `D1:C0:F4:8B:37:0E:74:D4:EA:47:70:ED:4C:3C:D7:0A:31:98:D3:1F` |
+
+The Lumina certificate's SHA-256 fingerprint remains `1F:C1:52:76:70:A8:0B:2B:B5:A8:1F:FC:D2:D8:D7:82:C2:AD:00:3A:21:8F:2C:AD:42:9D:30:08:81:07:D8:9F`. Back up the Lumina keystore and its properties together. All later releases must keep exactly this four-signer set or Android update compatibility will break. APK Signature Scheme v2 is enabled; v1 and v3 are deliberately disabled for the Android 9+ multiple-current-signer APK.
+
+Although the three community keys are public, an update-compatible APK must
+still carry the complete four-signer set. The non-public Lumina signer therefore
+remains the update-security anchor.
+
+For a certificate-only ARA-M rule without package binding, a match against any one of these four certificates can authorize Lumina. A package-bound rule must also name `top.syngnat.lumina.euicc`; a different bound package can still cause denial. EasyEUICC's `2A…` signing identity is not included because its private key is not public. Two additional signers found in NekokoLPA (`nekokobeef` and `wenzi`) are also excluded because their key containers cannot be publicly unlocked. See the [community multi-signing policy](docs/COMMUNITY_SIGNING.md) for provenance, migration, and limitations.
+
+The command below is useful only for producing a local **Lumina-single-signer
+base APK**. It does not apply the three community signers and is neither the
+official distributable Release nor update-compatible with the four-signer
+release chain. Official four-signer APKs are produced and verified only by the
+protected GitHub Actions tag workflow.
 
 ```powershell
 flutter build apk --release --no-pub
@@ -90,7 +109,7 @@ flutter build apk --release --no-pub
 
 ## CI, releases, and Android compatibility
 
-GitHub Actions runs Dart analysis, Flutter tests, Kotlin unit tests, a debug APK build, APK metadata checks, and both ZIP and ELF 16 KB alignment checks. A separate protected `release-signing` environment builds dedicated-key release APKs, then verifies the package ID, SDK levels, expected ABI, v2 signature, single signer, certificate fingerprint, and 16 KB compatibility.
+GitHub Actions runs Dart analysis, Flutter tests, Kotlin unit tests, a debug APK build, APK metadata checks, and both ZIP and ELF 16 KB alignment checks. A separate protected `release-signing` environment builds release APKs with v1/v3 disabled, then verifies the package ID, SDK levels, expected ABI, v2 signature, disabled v3 signing, exactly four current signers, all four certificate fingerprints, and 16 KB compatibility.
 
 On a trusted version-tag run, CI creates a GitHub Release with the ARM64, 32-bit ARM, x86_64, and universal APKs plus their matching compliance materials: `lumina-euicc-source-<full-commit-sha>.zip`, `lumina-euicc-dependency-sources-<full-commit-sha>.zip`, `SOURCE_INFO.txt`, `SHA256SUMS`, resolved Flutter/Gradle inventories and source manifests, and root/nested license notices. The metadata records exact Flutter framework/engine revisions and source URLs; unavailable Maven source artifacts are explicitly marked with candidate source/POM URLs. Trusted `main` builds may also retain the complete bundle as a GitHub Actions artifact for CI traceability. Pull-request jobs never receive the release signing secrets and cannot publish a signed APK or Release.
 
@@ -114,5 +133,6 @@ The app currently has a minimum SDK of API 28 (Android 9), compiles with API 36,
 
 - [Native/API capability mapping](docs/FEATURE_PARITY.md)
 - [Native integration](docs/NATIVE_INTEGRATION.md)
+- [Community multi-signing policy](docs/COMMUNITY_SIGNING.md)
 - [License scope](LICENSES_SCOPE.md)
 - [Third-party notices](THIRD_PARTY_NOTICES.md)

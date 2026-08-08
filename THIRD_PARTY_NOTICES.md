@@ -78,6 +78,79 @@ Android NDK build.
 The artwork remains in the vendored source tree and is not used as Lumina's
 application identity.
 
+## Community signing provenance
+
+### NekokoLPA community signing identities
+
+- Official upstream: <https://github.com/iebb/NekokoLPA>
+- Reviewed source commit:
+  [`517f88f9391099c8744a2f04df30c8d4a9cdd3d9`](https://github.com/iebb/NekokoLPA/commit/517f88f9391099c8744a2f04df30c8d4a9cdd3d9)
+- Published comparison release:
+  [v1.12.370](https://github.com/iebb/NekokoLPA/releases/tag/v1.12.370),
+  targeting commit
+  [`ff1f73b3d2e5a16b7f71e2572581cc7039cd4f30`](https://github.com/iebb/NekokoLPA/commit/ff1f73b3d2e5a16b7f71e2572581cc7039cd4f30)
+- Copyright: 2024 Kosmoneko OÜ; 2022 Infineon Technologies AG
+- License: MIT
+- License and notice:
+  <https://github.com/iebb/NekokoLPA/blob/517f88f9391099c8744a2f04df30c8d4a9cdd3d9/LICENSE#L1-L12>
+
+The upstream notice is retained here:
+
+```text
+Copyright (c) 2024 Kosmoneko OÜ
+Copyright (c) 2022 Infineon Technologies AG
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOURCE CODE AND ITS RELATED DOCUMENTATION IS PROVIDED "AS IS". INFINEON
+TECHNOLOGIES MAKES NO OTHER WARRANTY OF ANY KIND,WHETHER EXPRESS,IMPLIED OR,
+STATUTORY AND DISCLAIMS ANY AND ALL IMPLIED WARRANTIES OF MERCHANTABILITY,
+SATISFACTORY QUALITY, NON INFRINGEMENT AND FITNESS FOR A PARTICULAR PURPOSE.
+
+THE SOURCE CODE AND DOCUMENTATION MAY INCLUDE ERRORS. INFINEON TECHNOLOGIES
+RESERVES THE RIGHT TO INCORPORATE MODIFICATIONS TO THE SOURCE CODE IN LATER
+REVISIONS OF IT, AND TO MAKE IMPROVEMENTS OR CHANGES IN THE DOCUMENTATION OR
+THE PRODUCTS OR TECHNOLOGIES DESCRIBED THEREIN AT ANY TIME.
+
+INFINEON TECHNOLOGIES SHALL NOT BE LIABLE FOR ANY DIRECT, INDIRECT OR
+CONSEQUENTIAL DAMAGE OR LIABILITY ARISING FROM YOUR USE OF THE SOURCE CODE OR
+ANY DOCUMENTATION, INCLUDING BUT NOT LIMITED TO, LOST REVENUES, DATA OR
+PROFITS, DAMAGES OF ANY SPECIAL, INCIDENTAL OR CONSEQUENTIAL NATURE, PUNITIVE
+DAMAGES, LOSS OF PROPERTY OR LOSS OF PROFITS ARISING OUT OF OR IN CONNECTION
+WITH THIS AGREEMENT, OR BEING UNUSABLE, EVEN IF ADVISED OF THE POSSIBILITY OR
+PROBABILITY OF SUCH DAMAGES AND WHETHER A CLAIM FOR SUCH DAMAGE IS BASED UPON
+WARRANTY, CONTRACT, TORT, NEGLIGENCE OR OTHERWISE.
+```
+
+Lumina's four-current-signer release set includes the Lumina-owned certificate
+plus the Sakura, ShiinaSekiu Community, and 9eSIM community signing identities
+that are publicly reproducible from the pinned official NekokoLPA source. The
+upstream signing design is recorded in the pinned
+[`multisign/signing.sh`](https://github.com/iebb/NekokoLPA/blob/517f88f9391099c8744a2f04df30c8d4a9cdd3d9/variants/multisign/signing.sh#L8-L14).
+NekokoLPA's `nekokobeef` and `wenzi` identities are not included because their
+unlock credentials exist only as upstream CI secrets. EasyEUICC's `2A…`
+identity is not included because its private key is not publicly available.
+
+The upstream root MIT license grants use, modification, and distribution rights
+subject to preserving its copyright and permission notice; no signing-material
+exclusion was found in the pinned source. This notice preserves that
+attribution. Use of these public community identities does not imply endorsement
+by, or affiliation with, NekokoLPA, Sakura, ShiinaSekiu, or 9eSIM.
+
+Only public certificates and signatures are present in an APK. Keystores,
+private keys, and passwords are build-time material and are excluded from the
+Lumina repository, source archives, release artifacts, logs, and the publishing
+job. See `docs/COMMUNITY_SIGNING.md` for fingerprints, ARA-M behavior, and the
+stable-update-set policy.
+
 ## Flutter and Dart packages
 
 The release uses the Flutter SDK and the direct Dart packages declared in
