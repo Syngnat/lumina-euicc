@@ -116,6 +116,24 @@ abstract class AppLocalizations {
   /// **'Settings'**
   String get settings;
 
+  /// No description provided for @simToolkitManagement.
+  ///
+  /// In en, this message translates to:
+  /// **'STK management'**
+  String get simToolkitManagement;
+
+  /// No description provided for @simToolkitManagementDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the card\'s LPAe menu in the system SIM Toolkit'**
+  String get simToolkitManagementDescription;
+
+  /// No description provided for @simToolkitUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'The system SIM Toolkit is unavailable. Check that the device provides and enables an STK app.'**
+  String get simToolkitUnavailable;
+
   /// No description provided for @newEsim.
   ///
   /// In en, this message translates to:

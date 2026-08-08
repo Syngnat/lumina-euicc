@@ -17,6 +17,7 @@ Lumina is intentionally an ordinary, non-root Android app. It does not require o
 | Profile list / enable / disable / delete / rename | Flutter and native paths implemented; listing succeeded on one exact 9eSIM-card/device combination, while enable/disable/delete/rename remain unvalidated on hardware |
 | Download via activation code / QR + progress + confirm | UI, channel contract, and native path implemented; real-card validation pending |
 | Compatibility check | Read-only package/signing identity, per-slot OMAPI/ARA-M, and LPA diagnostics implemented; one field result opened ISD-R on OMAPI slot 1 and discovered port 1/0 without exposing a card identifier |
+| STK management | Settings opens the system SIM Toolkit/LPAe menu through known generic, OPPO/Oplus, MTK, and slot-specific activities; this card-side UI is independent of Lumina's OMAPI/ARA-M authorization |
 | Online update | Settings can check the official immutable GitHub Release, preserve the installed APK ABI family, verify SHA-256/package/version/exact four-signer identity, and open the Android system installer; silent installation is intentionally unsupported |
 | Notifications | List UI implemented; native process/delete handlers are not exposed through the Dart API or UI |
 | Memory reset | UI and bridge implemented; destructive real-card path not validated |
@@ -59,6 +60,12 @@ the complete evidence, limitations, and pre-purchase checklist in
 USB CCID avoids the phone-slot ARA-M rule, but it is not yet a verified fallback:
 the current Flutter activity does not expose the complete USB permission and
 attach/detach refresh flow, and no reader has completed Lumina device sign-off.
+
+**Settings → STK management** opens the phone's system SIM Toolkit so a
+compatible card can show its own LPAe menu. This is useful even when Lumina is
+denied by ARA-M because the menu executes on the card/system STK path. It does
+not expose the menu's profile data back to Lumina and does not grant the Lumina
+bridge permission to list or mutate profiles through OMAPI.
 
 ## Architecture
 

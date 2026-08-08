@@ -76,6 +76,7 @@ OMAPI (removable eUICC)  or  USB CCID reader
 | Delete / rename profile | UI/bridge path implemented; hardware validation pending |
 | Download via LPA activation code / QR | UI/bridge path, progress events, and confirmation implemented; hardware validation pending |
 | Compatibility check | UI/bridge path implemented |
+| STK management | Settings can open the system SIM Toolkit/card-side LPAe menu; it is an external UI only and does not authorize or return profile data to Lumina |
 | Notifications | Listing is exposed in Flutter; process/delete have native handlers but no Dart API or UI actions |
 | Memory reset | UI/bridge path implemented; destructive hardware path not validated |
 | Online update | Settings UI and Dart/Kotlin path accept only the official immutable GitHub Release, preserve the installed APK ABI family, verify SHA-256/package/newer-version/exact signer set, and launch the user-confirmed Android installer |
@@ -114,6 +115,7 @@ Methods (see `lib/services/euicc_bridge.dart` + `EuiccBridgePlugin.kt`):
 - `downloadProfile` returns a `taskId`; every EventChannel event and each confirm/cancel call carries that ID to prevent cross-task delivery
 - `runCompatibilityCheck` / `getEuiccInfo` / `memoryReset`
 - `getAppRuntimeInfo` / `prepareUpdateFile` / `verifyAndInstallUpdate` / `openInstallPermissionSettings` for user-confirmed official Release updates
+- `openSimToolkit` launches the system SIM Toolkit/card-side LPAe menu; it returns only whether a system activity was launched
 - Dart-visible notification method: `listNotifications`
 - Native handlers without Dart/UI exposure: `processNotification` / `deleteNotification`
 

@@ -18,6 +18,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settings => '设置';
 
   @override
+  String get simToolkitManagement => 'STK 管理';
+
+  @override
+  String get simToolkitManagementDescription => '打开系统 SIM 卡工具包中的卡内 LPAe 菜单';
+
+  @override
+  String get simToolkitUnavailable => '系统“SIM 卡工具包”不可用。请确认设备提供并已启用 STK 应用。';
+
+  @override
   String get newEsim => '新增 eSIM';
 
   @override

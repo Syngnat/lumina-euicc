@@ -28,6 +28,7 @@
 | `runCompatibilityCheck` | 只读返回当前包名/签名 SHA-1、逐槽 OMAPI/ARA-M、ISD-R/LPA 检查项；使用稳定 `code` 和参数供中英文 UI 展示，不返回 EID/ICCID |
 | `getEuiccInfo` | EID、通道有效性及原生 `euiccInfo2` 文本（通道支持时） |
 | `memoryReset` | 危险操作，需二次确认 |
+| `openSimToolkit` | 打开系统 SIM 卡工具包 / 卡内 LPAe 菜单；不授予 Lumina OMAPI/ARA-M 权限，也不返回卡内菜单数据 |
 
 ## 通知
 

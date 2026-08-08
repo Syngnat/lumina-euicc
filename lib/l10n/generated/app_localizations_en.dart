@@ -18,6 +18,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settings => 'Settings';
 
   @override
+  String get simToolkitManagement => 'STK management';
+
+  @override
+  String get simToolkitManagementDescription =>
+      'Open the card\'s LPAe menu in the system SIM Toolkit';
+
+  @override
+  String get simToolkitUnavailable =>
+      'The system SIM Toolkit is unavailable. Check that the device provides and enables an STK app.';
+
+  @override
   String get newEsim => 'New eSIM';
 
   @override

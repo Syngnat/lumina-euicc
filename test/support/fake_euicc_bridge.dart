@@ -11,6 +11,9 @@ class FakeEuiccBridge extends EuiccBridge {
   int cancelDownloadCalls = 0;
   int confirmDownloadCalls = 0;
   int scanQrCalls = 0;
+  int openSimToolkitCalls = 0;
+  bool openSimToolkitResult = true;
+  Object? openSimToolkitError;
   String? scanQrResult;
   Object? scanQrError;
   Future<String?>? scanQrFuture;
@@ -42,6 +45,14 @@ class FakeEuiccBridge extends EuiccBridge {
     final future = scanQrFuture;
     if (future != null) return future;
     return scanQrResult;
+  }
+
+  @override
+  Future<bool> openSimToolkit() async {
+    openSimToolkitCalls++;
+    final error = openSimToolkitError;
+    if (error != null) throw error;
+    return openSimToolkitResult;
   }
 
   @override

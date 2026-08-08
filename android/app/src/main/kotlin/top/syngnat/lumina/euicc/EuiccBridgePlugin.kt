@@ -75,6 +75,7 @@ class EuiccBridgePlugin :
 
     private val appContainer by lazy { DefaultAppContainer(appContext) }
     private val appUpdateSupport by lazy { AppUpdateSupport(appContext) }
+    private val simToolkitSupport = SimToolkitSupport()
     private val manager: EuiccChannelManager by lazy {
         DefaultEuiccChannelManager(appContainer, appContext)
     }
@@ -165,6 +166,10 @@ class EuiccBridgePlugin :
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
             "scanQr" -> startQrScan(result)
+            "openSimToolkit" -> {
+                val launched = simToolkitSupport.open(activityBinding?.activity)
+                result.success(mapOf("status" to if (launched) "launched" else "unavailable"))
+            }
             "getAppRuntimeInfo" -> async(result) { appUpdateSupport.runtimeInfo() }
             "prepareUpdateFile" -> async(result) {
                 val assetName = requireUpdateAssetName(call.argument<Any>("assetName"))

@@ -8,6 +8,12 @@
     <uses-feature android:name="android.hardware.usb.host" android:required="false" />
     <uses-feature android:name="android.hardware.se.omapi.uicc" android:required="false" />
 
+    <queries>
+        <package android:name="com.android.stk" />
+        <package android:name="com.android.stk1" />
+        <package android:name="com.android.stk2" />
+    </queries>
+
     <application
         android:label="Lumina eUICC"
         android:name=".LuminaApplication"

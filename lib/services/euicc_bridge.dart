@@ -25,6 +25,11 @@ class EuiccBridge {
 
   Future<String?> scanQr() => _methods.invokeMethod<String>('scanQr');
 
+  Future<bool> openSimToolkit() async {
+    final raw = await _methods.invokeMethod<Map>('openSimToolkit');
+    return raw?['status']?.toString() == 'launched';
+  }
+
   Future<Map<String, dynamic>> getAppRuntimeInfo() async {
     final raw = await _methods.invokeMethod<Map>('getAppRuntimeInfo');
     return Map<String, dynamic>.from(raw ?? const {});

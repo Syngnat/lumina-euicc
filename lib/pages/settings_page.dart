@@ -17,6 +17,25 @@ class SettingsPage extends ConsumerWidget {
       body: ListView(
         children: [
           ListTile(
+            key: const Key('openSimToolkit'),
+            leading: const Icon(Icons.sim_card_outlined),
+            title: Text(context.l10n.simToolkitManagement),
+            subtitle: Text(context.l10n.simToolkitManagementDescription),
+            trailing: const Icon(Icons.open_in_new),
+            onTap: () async {
+              var launched = false;
+              try {
+                launched = await ref.read(euiccBridgeProvider).openSimToolkit();
+              } catch (_) {
+                launched = false;
+              }
+              if (!context.mounted || launched) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(context.l10n.simToolkitUnavailable)),
+              );
+            },
+          ),
+          ListTile(
             leading: const Icon(Icons.system_update_alt),
             title: Text(context.l10n.softwareUpdate),
             subtitle: Text(context.l10n.softwareUpdateDescription),

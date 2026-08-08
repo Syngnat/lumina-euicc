@@ -8,15 +8,16 @@ Lumina is an unprivileged application by design. Root, Magisk, Shizuku, system-a
 
 | Layer | Status |
 |---|---|
-| Flutter UI | Home, profile, download, compatibility, settings, and software-update screens are present |
+| Flutter UI | Home, profile, download, compatibility, settings, STK launcher, and software-update screens are present |
 | Notification UI | Lists pending notifications only; process/delete actions are not exposed in Dart or Flutter |
-| MethodChannel API | Profile/download/device/update operations and notification listing are exposed to Dart; native-only notification process/delete handlers remain |
+| MethodChannel API | Profile/download/device/STK/update operations and notification listing are exposed to Dart; native-only notification process/delete handlers remain |
 | EventChannel download progress | Implemented in code, including confirmation/cancellation flow |
 | OpenEUICC `app-common` + `lpac-jni` as Gradle modules | **Included under `third_party/OpenEUICC`** |
 | `EuiccBridgePlugin` real LPA path | Implemented in code for profile operations, download, notification handlers, memory reset, eUICC info, and compatibility; channel/profile listing has one limited field result, while all mutation paths remain device-unvalidated |
 | USB CCID permission / hotplug UX | Transport scan is present, but the Lumina Flutter activity does not yet expose the complete runtime permission request or attach/detach refresh flow; no reader is device-validated |
 | Mock fallback | Debug builds only; release builds return `mode=unavailable` and no invented channel/profile |
 | Online update | Official immutable GitHub Release lookup, installed-ABI selection, bounded private-cache download, SHA-256/package/version/exact-signer verification, and Android system-installer launch are implemented; no silent install or card privilege is added |
+| STK launcher | Settings can open generic, OPPO/Oplus, MTK, and slot-specific system SIM Toolkit activities; the card-side LPAe menu does not provide a data channel or ARA-M grant to Lumina |
 
 ## Intended runtime behaviour
 
