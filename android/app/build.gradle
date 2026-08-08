@@ -4,10 +4,45 @@ plugins {
     id "dev.flutter.flutter-gradle-plugin"
 }
 
+def projectKeystorePropertiesFile = rootProject.file("key.properties")
+def userKeystorePropertiesFile = new File(
+    System.getProperty("user.home"),
+    ".android/lumina-euicc/key.properties"
+)
+def keystorePropertiesFile = projectKeystorePropertiesFile.exists()
+    ? projectKeystorePropertiesFile
+    : userKeystorePropertiesFile
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
+
+    def requiredSigningProperties = ["storeFile", "storePassword", "keyAlias", "keyPassword"]
+    def missingSigningProperties = requiredSigningProperties.findAll {
+        !keystoreProperties.getProperty(it)?.trim()
+    }
+    if (!missingSigningProperties.isEmpty()) {
+        throw new GradleException(
+            "${keystorePropertiesFile} is missing: ${missingSigningProperties.join(', ')}"
+        )
+    }
+
+    def configuredKeystoreFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
+    if (!configuredKeystoreFile.isFile()) {
+        throw new GradleException(
+            "Release keystore does not exist: ${configuredKeystoreFile}"
+        )
+    }
+} else if (gradle.startParameter.taskNames.any { it.toLowerCase().contains("release") }) {
+    throw new GradleException(
+        "Release signing config not found. Copy android/key.properties.example to " +
+        "android/key.properties or ${userKeystorePropertiesFile}."
+    )
+}
+
 android {
     namespace = "top.syngnat.lumina.euicc"
-    compileSdk = 35
-    ndkVersion = "26.1.10909125"
+    compileSdk = 36
+    ndkVersion = "28.2.13676358"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -29,10 +64,22 @@ android {
         }
     }
 
+    signingConfigs {
+        release {
+            if (keystorePropertiesFile.exists()) {
+                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.release
             minifyEnabled = false
+            shrinkResources = false
         }
         debug {
             minifyEnabled = false
@@ -53,4 +100,5 @@ flutter {
 dependencies {
     implementation project(":app-common")
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0"
+    testImplementation "junit:junit:4.13.2"
 }

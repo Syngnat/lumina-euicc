@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../l10n/l10n.dart';
 import '../services/providers.dart';
 
 class SettingsPage extends ConsumerWidget {
@@ -10,45 +11,43 @@ class SettingsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final channel = ref.watch(selectedChannelProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(title: Text(context.l10n.settings)),
       body: ListView(
         children: [
-          const ListTile(
-            title: Text('About'),
-            subtitle: Text(
-              'Lumina eUICC — Flutter UI aligned with EasyEUICC capabilities.\n'
-              'Core LPA runs in the Android native bridge.',
-            ),
+          ListTile(
+            title: Text(context.l10n.about),
+            subtitle: Text(context.l10n.aboutDescription),
             isThreeLine: true,
           ),
           const Divider(),
           ListTile(
-            title: const Text('Memory reset'),
+            title: Text(context.l10n.memoryReset),
             subtitle: Text(
               channel == null
-                  ? 'Select a channel first'
-                  : 'Dangerous: wipe profiles on ${channel.label}',
+                  ? context.l10n.selectChannelFirst
+                  : context.l10n.memoryResetWarning(
+                      context.l10n.euiccChannelLabel(channel),
+                    ),
             ),
             enabled: channel != null,
-            leading: Icon(Icons.delete_forever, color: Theme.of(context).colorScheme.error),
+            leading: Icon(Icons.delete_forever,
+                color: Theme.of(context).colorScheme.error),
             onTap: channel == null
                 ? null
                 : () async {
                     final ok = await showDialog<bool>(
                       context: context,
                       builder: (context) => AlertDialog(
-                        title: const Text('Memory reset?'),
-                        content: const Text(
-                          'This may delete profiles on the eUICC. Continue only if you know what you are doing.',
-                        ),
+                        title: Text(context.l10n.memoryResetQuestion),
+                        content: Text(context.l10n.memoryResetConfirmation),
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.pop(context, false),
-                            child: const Text('Cancel'),
+                            child: Text(context.l10n.cancel),
                           ),
                           FilledButton(
                             onPressed: () => Navigator.pop(context, true),
-                            child: const Text('Reset'),
+                            child: Text(context.l10n.reset),
                           ),
                         ],
                       ),
@@ -61,33 +60,36 @@ class SettingsPage extends ConsumerWidget {
                         );
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Memory reset requested')),
+                        SnackBar(
+                          content: Text(context.l10n.memoryResetRequested),
+                        ),
                       );
                     }
                     ref.invalidate(profilesProvider);
                   },
           ),
           ListTile(
-            title: const Text('Notifications'),
-            subtitle: const Text('List / process pending eUICC notifications'),
+            title: Text(context.l10n.notifications),
+            subtitle: Text(context.l10n.notificationsDescription),
             enabled: channel != null,
             onTap: channel == null
                 ? null
                 : () async {
-                    final list = await ref.read(euiccBridgeProvider).listNotifications(
-                          slotId: channel.slotId,
-                          portId: channel.portId,
-                          seId: channel.seId,
-                        );
+                    final list =
+                        await ref.read(euiccBridgeProvider).listNotifications(
+                              slotId: channel.slotId,
+                              portId: channel.portId,
+                              seId: channel.seId,
+                            );
                     if (!context.mounted) return;
                     await showModalBottomSheet<void>(
                       context: context,
                       showDragHandle: true,
                       builder: (context) {
                         if (list.isEmpty) {
-                          return const Padding(
-                            padding: EdgeInsets.all(24),
-                            child: Text('No pending notifications'),
+                          return Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Text(context.l10n.noPendingNotifications),
                           );
                         }
                         return ListView.builder(
@@ -95,7 +97,10 @@ class SettingsPage extends ConsumerWidget {
                           itemBuilder: (context, i) {
                             final n = list[i];
                             return ListTile(
-                              title: Text(n['title']?.toString() ?? 'Notification'),
+                              title: Text(
+                                n['title']?.toString() ??
+                                    context.l10n.notification,
+                              ),
                               subtitle: Text(n['detail']?.toString() ?? ''),
                             );
                           },

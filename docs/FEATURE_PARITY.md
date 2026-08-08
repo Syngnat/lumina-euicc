@@ -1,5 +1,7 @@
 # EasyEUICC ↔ Lumina Flutter 功能对齐
 
+本表描述当前代码表面，不代表 ARA-M 卡或 USB CCID 读卡器真机验证结果。
+
 ## Profile 生命周期
 
 | API | 参数 | 返回 |
@@ -14,26 +16,26 @@
 
 | API | 说明 |
 |---|---|
-| `downloadProfile` | `activationCode`, 可选 `confirmationCode`, `imei` |
-| Event: `taskEvents` | `progress`(0-1), `phase`, `provider`, `name`, `needConfirmation`, `done`, `error` |
-| `confirmDownload` | 用户确认继续下载 |
-| `cancelDownload` | 取消 |
+| `downloadProfile` | `activationCode`，可选 `confirmationCode`、`imei`；返回本次下载的 `taskId` |
+| Event: `taskEvents` | 每条事件携带 `taskId`，另含 `progress`(0-1)、`phase`、`provider`、`name`、`needConfirmation`、`done`、`error` |
+| `confirmDownload` | 携带 `taskId`，仅确认对应下载 |
+| `cancelDownload` | 携带 `taskId` 的协作式取消；若原生尾段已不可中断，最终结果仍可能是成功 |
 
 ## 设备 / 兼容
 
 | API | 说明 |
 |---|---|
-| `runCompatibilityCheck` | 返回 OMAPI / 通道 / ARA-M 相关检查项 |
-| `getEuiccInfo` | EID、剩余空间等（通道支持时） |
+| `runCompatibilityCheck` | 只读返回当前包名/签名 SHA-1、逐槽 OMAPI/ARA-M、ISD-R/LPA 检查项；使用稳定 `code` 和参数供中英文 UI 展示，不返回 EID/ICCID |
+| `getEuiccInfo` | EID、通道有效性及原生 `euiccInfo2` 文本（通道支持时） |
 | `memoryReset` | 危险操作，需二次确认 |
 
 ## 通知
 
-| API | 说明 |
+| API | 当前暴露范围 |
 |---|---|
-| `listNotifications` | 待处理通知列表 |
-| `processNotification` | 处理单条 |
-| `deleteNotification` | 删除单条 |
+| `listNotifications` | Kotlin、Dart API 与 Flutter 列表 UI 均已接线 |
+| `processNotification` | 仅 Kotlin handler；尚无 Dart API / Flutter 操作 |
+| `deleteNotification` | 仅 Kotlin handler；尚无 Dart API / Flutter 操作 |
 
 ## 与上游映射（集成时）
 

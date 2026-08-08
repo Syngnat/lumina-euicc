@@ -9,6 +9,11 @@ android {
     namespace = "im.angry.openeuicc.common"
     compileSdk = 35
 
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
+
     defaultConfig {
         minSdk = 28
 

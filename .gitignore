@@ -6,18 +6,21 @@
 .pub-cache/
 .pub/
 build/
-.metadata
 *.iml
 .idea/
 *.lock
+!pubspec.lock
 
 # Android
 android/.gradle/
+android/.kotlin/
 android/local.properties
 android/**/GeneratedPluginRegistrant.java
 android/key.properties
 *.jks
 *.keystore
+*.p12
+*.pfx
 third_party/OpenEUICC/**/build/
 third_party/OpenEUICC/.gradle/
 

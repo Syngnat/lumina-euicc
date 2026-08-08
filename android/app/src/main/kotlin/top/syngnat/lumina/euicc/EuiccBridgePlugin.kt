@@ -1,16 +1,23 @@
 package top.syngnat.lumina.euicc
 
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.se.omapi.Reader
 import android.util.Log
 import im.angry.openeuicc.core.DefaultEuiccChannelManager
 import im.angry.openeuicc.core.EuiccChannel
 import im.angry.openeuicc.core.EuiccChannelManager
 import im.angry.openeuicc.di.DefaultAppContainer
+import im.angry.openeuicc.util.EUICC_DEFAULT_ISDR_AID
+import im.angry.openeuicc.util.connectSEService
+import im.angry.openeuicc.util.decodeHex
 import im.angry.openeuicc.util.displayName
 import im.angry.openeuicc.util.isEnabled
 import im.angry.openeuicc.util.operational
+import im.angry.openeuicc.util.parseIsdrAidList
 import im.angry.openeuicc.util.switchProfile
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.EventChannel
@@ -20,25 +27,22 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import net.typeblog.lpac_jni.LocalProfileInfo
 import net.typeblog.lpac_jni.ProfileClass
 import net.typeblog.lpac_jni.ProfileDownloadCallback
 import net.typeblog.lpac_jni.ProfileDownloadInput
-import net.typeblog.lpac_jni.ProfileDownloadState
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.CancellationException
 import java.util.concurrent.atomic.AtomicReference
 
 /**
  * Flutter bridge for EasyEUICC-aligned LPA operations.
  *
- * Prefers real OpenEUICC / lpac-jni stack. Falls back to in-memory mock when
- * no eUICC channel can be opened (emulator / no ARA-M card / missing perms).
+ * Prefers the real OpenEUICC / lpac-jni stack. Debug builds can fall back to
+ * an in-memory mock; release builds report an unavailable real channel.
  *
  * OpenEUICC is GPL-3 only; this file is part of the same derivative work.
  */
@@ -61,24 +65,29 @@ class EuiccBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventC
         DefaultEuiccChannelManager(appContainer, appContext)
     }
 
-    private val useMockOnly = AtomicBoolean(false)
-    private val downloadCancelled = AtomicBoolean(false)
-    private val pendingConfirm = AtomicReference<((Boolean) -> Unit)?>(null)
+    private val activeDownload = AtomicReference<DownloadTaskSession?>(null)
+    private val channelDiscovery by lazy {
+        BridgeChannelDiscovery(
+            discoverRealChannels = ::discoverRealChannels,
+            allowMock = BuildConfig.DEBUG,
+            onProbeError = { Log.e(TAG, "listChannels real probe failed", it) },
+        )
+    }
 
     // Mock store for UI/dev when real LPA unavailable
-    private val mockProfiles = mutableListOf(
-        hashMapOf<String, Any>(
-            "iccid" to "8986000000000000001",
-            "name" to "Travel Data",
-            "provider" to "ExampleCarrier",
+    private val mockProfiles: MutableList<MutableMap<String, Any>> = mutableListOf(
+        mutableMapOf<String, Any>(
+            "iccid" to "mock-profile-1",
+            "name" to "Mock Travel Data",
+            "provider" to "Mock carrier",
             "enabled" to true,
             "profileClass" to "operational",
             "seq" to 1,
         ),
-        hashMapOf(
-            "iccid" to "8986000000000000002",
-            "name" to "Work SIM",
-            "provider" to "CorpMobile",
+        mutableMapOf<String, Any>(
+            "iccid" to "mock-profile-2",
+            "name" to "Mock Work SIM",
+            "provider" to "Mock carrier",
             "enabled" to false,
             "profileClass" to "operational",
             "seq" to 2,
@@ -96,6 +105,7 @@ class EuiccBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventC
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         methodChannel.setMethodCallHandler(null)
         eventChannel.setStreamHandler(null)
+        activeDownload.getAndSet(null)?.cancel()
         try {
             manager.invalidate()
         } catch (_: Exception) {
@@ -143,41 +153,42 @@ class EuiccBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventC
                 )
             }
             "downloadProfile" -> {
-                // start async download; progress via EventChannel
-                downloadCancelled.set(false)
+                val request = validated(result) { call.downloadRequest() } ?: return
+                val session = DownloadTaskSession(::emit)
+                if (!activeDownload.compareAndSet(null, session)) {
+                    result.error("download_busy", "A profile download is already running", null)
+                    return
+                }
                 scope.launch(Dispatchers.IO) {
                     try {
-                        downloadProfile(
-                            call.int("slotId"),
-                            call.int("portId"),
-                            call.seId(),
-                            call.str("activationCode"),
-                            call.argument<String>("confirmationCode"),
-                            call.argument<String>("imei"),
-                        )
+                        downloadProfile(request, session)
+                        session.completeSuccess()
                     } catch (e: Exception) {
                         Log.e(TAG, "download failed", e)
-                        emit(
-                            mapOf(
-                                "phase" to "error",
-                                "done" to false,
-                                "error" to (e.message ?: e.toString()),
-                            )
-                        )
+                        session.completeFailure(e)
+                    } finally {
+                        activeDownload.compareAndSet(session, null)
                     }
                 }
-                result.success(mapOf("ok" to true, "started" to true))
+                result.success(mapOf("ok" to true, "started" to true, "taskId" to session.taskId))
             }
             "confirmDownload" -> {
-                val cont = call.argument<Boolean>("continue") ?: false
-                pendingConfirm.getAndSet(null)?.invoke(cont)
-                result.success(mapOf("ok" to true))
+                val args = validated(result) {
+                    requireStringArgument("taskId", call.argument<Any>("taskId")) to
+                        requireBooleanArgument("continue", call.argument<Any>("continue"))
+                } ?: return
+                val session = activeDownload.get()
+                val handled = session != null && session.taskId == args.first &&
+                    session.respondToConfirmation(args.second)
+                result.success(mapOf("ok" to handled))
             }
             "cancelDownload" -> {
-                downloadCancelled.set(true)
-                pendingConfirm.getAndSet(null)?.invoke(false)
-                emit(mapOf("phase" to "cancelled", "done" to false, "error" to "cancelled"))
-                result.success(mapOf("ok" to true))
+                val taskId = validated(result) {
+                    requireStringArgument("taskId", call.argument<Any>("taskId"))
+                } ?: return
+                val session = activeDownload.get()
+                val handled = session != null && session.taskId == taskId && session.cancel()
+                result.success(mapOf("ok" to handled))
             }
             "runCompatibilityCheck" -> async(result) { runCompatibilityCheck() }
             "getEuiccInfo" -> async(result) {
@@ -194,7 +205,7 @@ class EuiccBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventC
                     call.int("slotId"),
                     call.int("portId"),
                     call.seId(),
-                    (call.argument<Number>("seq") ?: 0L).toLong(),
+                    call.long("seq"),
                 )
             }
             "deleteNotification" -> async(result) {
@@ -202,7 +213,7 @@ class EuiccBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventC
                     call.int("slotId"),
                     call.int("portId"),
                     call.seId(),
-                    (call.argument<Number>("seq") ?: 0L).toLong(),
+                    call.long("seq"),
                 )
             }
             else -> result.notImplemented()
@@ -221,79 +232,63 @@ class EuiccBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventC
         }
     }
 
-    private suspend fun listChannels(): Map<String, Any> {
-        if (useMockOnly.get()) return mockChannels()
-        return try {
-            // Try USB once so removable readers appear when permitted.
-            try {
-                manager.tryOpenUsbEuiccChannel()
-            } catch (e: Exception) {
-                Log.w(TAG, "USB open skipped: ${e.message}")
-            }
-            val ports = manager.flowAllOpenEuiccPorts().toList()
-            val channels = mutableListOf<Map<String, Any>>()
-            for ((slotId, portId) in ports) {
-                val ses = manager.flowEuiccSecureElements(slotId, portId).toList()
-                for (se in ses.ifEmpty { listOf(EuiccChannel.SecureElementId.DEFAULT) }) {
-                    try {
-                        manager.withEuiccChannel(slotId, portId, se) { ch ->
-                            channels.add(
-                                mapOf(
-                                    "slotId" to slotId,
-                                    "portId" to portId,
-                                    "seId" to se.id.toString(),
-                                    "label" to "${ch.type} slot$slotId/port$portId/se${se.id}",
-                                    "type" to if (slotId == EuiccChannelManager.USB_CHANNEL_ID) "usb" else "omapi",
-                                    "logicalSlotId" to ch.logicalSlotId,
-                                    "eid" to (ch.lpa.eID ?: ""),
-                                )
-                            )
-                        }
-                    } catch (e: Exception) {
-                        Log.w(TAG, "channel open failed slot=$slotId port=$portId: ${e.message}")
-                    }
-                }
-            }
-            if (channels.isEmpty()) {
-                Log.i(TAG, "No real eUICC channel; using mock")
-                useMockOnly.set(true)
-                mockChannels() + mapOf("mode" to "mock")
-            } else {
-                useMockOnly.set(false)
-                mapOf("channels" to channels, "mode" to "real")
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "listChannels real failed, mock fallback", e)
-            useMockOnly.set(true)
-            mockChannels() + mapOf("mode" to "mock", "fallbackReason" to (e.message ?: "error"))
-        }
+    private suspend fun listChannels(): Map<String, Any> = channelDiscovery.listChannels()
+
+    private fun shouldUseMockChannel(slotId: Int): Boolean {
+        if (!isMockChannel(slotId)) return false
+        check(BuildConfig.DEBUG) { "Mock channels are unavailable in release builds" }
+        return true
     }
 
-    private fun mockChannels() = mapOf(
-        "channels" to listOf(
-            mapOf(
-                "slotId" to 0,
-                "portId" to 0,
-                "seId" to "0",
-                "label" to "Removable eUICC (mock)",
-                "type" to "omapi",
-            )
-        )
-    )
+    private suspend fun discoverRealChannels(): List<Map<String, Any>> {
+        // flowAllOpenEuiccPorts also probes USB; this first attempt only preserves diagnostic logging.
+        try {
+            manager.tryOpenUsbEuiccChannel()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (e: Exception) {
+            Log.w(TAG, "USB open skipped: ${e.message}")
+        }
+
+        val channels = mutableListOf<Map<String, Any>>()
+        for ((slotId, portId) in manager.flowAllOpenEuiccPorts().toList()) {
+            val secureElements = manager.flowEuiccSecureElements(slotId, portId).toList()
+            for (se in secureElements.ifEmpty { listOf(EuiccChannel.SecureElementId.DEFAULT) }) {
+                try {
+                    manager.withEuiccChannel(slotId, portId, se) { channel ->
+                        channels.add(
+                            mapOf(
+                                "slotId" to slotId,
+                                "portId" to portId,
+                                "seId" to se.id.toString(),
+                                "label" to "${channel.type} slot$slotId/port$portId/se${se.id}",
+                                "type" to if (slotId == EuiccChannelManager.USB_CHANNEL_ID) "usb" else "omapi",
+                                "logicalSlotId" to channel.logicalSlotId,
+                            )
+                        )
+                    }
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (e: Exception) {
+                    Log.w(TAG, "channel open failed slot=$slotId port=$portId: ${e.message}")
+                }
+            }
+        }
+        if (channels.isEmpty()) Log.i(TAG, "No real eUICC channel discovered")
+        return channels
+    }
 
     private suspend fun listProfiles(slotId: Int, portId: Int, seId: EuiccChannel.SecureElementId): Map<String, Any> {
-        if (isMockChannel(slotId, portId, seId)) {
-            return mapOf("profiles" to mockProfiles.toList(), "mode" to "mock")
-        }
-        return try {
-            manager.withEuiccChannel(slotId, portId, seId) { ch ->
-                val profiles = ch.lpa.profiles.operational.mapIndexed { index, p -> p.toMap(index + 1) }
-                mapOf("profiles" to profiles, "mode" to "real")
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "listProfiles fallback mock: ${e.message}")
-            mapOf("profiles" to mockProfiles.toList(), "mode" to "mock", "fallbackReason" to (e.message ?: ""))
-        }
+        return routeChannel(
+            slotId = slotId,
+            mock = { mapOf("profiles" to mockProfiles.toList(), "mode" to "mock") },
+            real = {
+                manager.withEuiccChannel(slotId, portId, seId) { ch ->
+                    val profiles = ch.lpa.profiles.operational.mapIndexed { index, p -> p.toMap(index + 1) }
+                    mapOf("profiles" to profiles, "mode" to "real")
+                }
+            },
+        )
     }
 
     private suspend fun switchProfile(
@@ -303,7 +298,7 @@ class EuiccBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventC
         iccid: String,
         enable: Boolean,
     ): Map<String, Any> {
-        if (isMockChannel(slotId, portId, seId)) {
+        if (shouldUseMockChannel(slotId)) {
             mockProfiles.forEach { p ->
                 if (enable) p["enabled"] = p["iccid"] == iccid else if (p["iccid"] == iccid) p["enabled"] = false
             }
@@ -312,7 +307,7 @@ class EuiccBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventC
         val ok = manager.withEuiccChannel(slotId, portId, seId) { ch ->
             ch.lpa.switchProfile(iccid, enable = enable, refresh = true)
         }
-        if (!ok) throw IllegalStateException("switchProfile failed for $iccid")
+        if (!ok) throw IllegalStateException("switchProfile failed")
         return mapOf("ok" to true, "mode" to "real")
     }
 
@@ -322,12 +317,12 @@ class EuiccBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventC
         seId: EuiccChannel.SecureElementId,
         iccid: String,
     ): Map<String, Any> {
-        if (isMockChannel(slotId, portId, seId)) {
+        if (shouldUseMockChannel(slotId)) {
             mockProfiles.removeAll { it["iccid"] == iccid }
             return mapOf("ok" to true, "mode" to "mock")
         }
         val ok = manager.withEuiccChannel(slotId, portId, seId) { ch -> ch.lpa.deleteProfile(iccid) }
-        if (!ok) throw IllegalStateException("deleteProfile failed for $iccid")
+        if (!ok) throw IllegalStateException("deleteProfile failed")
         return mapOf("ok" to true, "mode" to "real")
     }
 
@@ -338,7 +333,7 @@ class EuiccBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventC
         iccid: String,
         name: String,
     ): Map<String, Any> {
-        if (isMockChannel(slotId, portId, seId)) {
+        if (shouldUseMockChannel(slotId)) {
             mockProfiles.find { it["iccid"] == iccid }?.put("name", name)
             return mapOf("ok" to true, "mode" to "mock")
         }
@@ -348,95 +343,57 @@ class EuiccBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventC
         return mapOf("ok" to true, "mode" to "real")
     }
 
-    private suspend fun downloadProfile(
-        slotId: Int,
-        portId: Int,
-        seId: EuiccChannel.SecureElementId,
-        activationCode: String,
-        confirmationCode: String?,
-        imei: String?,
-    ) {
-        if (isMockChannel(slotId, portId, seId)) {
-            runMockDownload(activationCode)
+    private suspend fun downloadProfile(request: ValidatedDownloadRequest, session: DownloadTaskSession) {
+        if (shouldUseMockChannel(request.slotId)) {
+            runMockDownload(session)
             return
         }
-        val (address, matchingId) = parseActivationCode(activationCode)
         val input = ProfileDownloadInput(
-            address = address,
-            matchingId = matchingId,
-            imei = imei,
-            confirmationCode = confirmationCode,
+            address = request.address,
+            matchingId = request.matchingId,
+            imei = request.imei,
+            confirmationCode = request.confirmationCode,
         )
-        manager.withEuiccChannel(slotId, portId, seId) { ch ->
-            ch.lpa.downloadProfile(input, ProfileDownloadCallback { state ->
-                if (downloadCancelled.get()) return@ProfileDownloadCallback false
-                when (state) {
-                    is ProfileDownloadState.Preparing -> emit(mapOf("phase" to "preparing", "progress" to 0.0))
-                    is ProfileDownloadState.Connecting -> emit(mapOf("phase" to "connecting", "progress" to 0.2))
-                    is ProfileDownloadState.Authenticating -> emit(mapOf("phase" to "authenticating", "progress" to 0.4))
-                    is ProfileDownloadState.ConfirmingDownload -> {
-                        val meta = state.metadata
-                        emit(
-                            mapOf(
-                                "phase" to "confirming",
-                                "progress" to 0.5,
-                                "provider" to (meta?.providerName ?: ""),
-                                "name" to (meta?.name ?: ""),
-                                "needConfirmation" to true,
-                            )
-                        )
-                        // Wait for Flutter confirmDownload
-                        waitConfirm()
-                    }
-                    is ProfileDownloadState.Downloading -> emit(mapOf("phase" to "downloading", "progress" to 0.7))
-                    is ProfileDownloadState.Finalizing -> emit(mapOf("phase" to "finalizing", "progress" to 0.9))
-                }
-                !downloadCancelled.get()
-            })
+        manager.withEuiccChannel(
+            request.slotId,
+            request.portId,
+            EuiccChannel.SecureElementId.createFromInt(request.seId),
+        ) { ch ->
+            ch.lpa.downloadProfile(input, ProfileDownloadCallback { state -> session.onLpaState(state) })
         }
-        emit(mapOf("phase" to "done", "progress" to 1.0, "done" to true))
     }
 
-    private fun waitConfirm(): Boolean {
-        val latch = CountDownLatch(1)
-        val value = AtomicBoolean(false)
-        pendingConfirm.set {
-            value.set(it)
-            latch.countDown()
-        }
-        // 5 minutes max wait for user confirmation
-        latch.await(5, TimeUnit.MINUTES)
-        return value.get() && !downloadCancelled.get()
-    }
-
-    private fun runMockDownload(activationCode: String) {
-        emit(mapOf("phase" to "resolving", "progress" to 0.05))
+    private fun runMockDownload(session: DownloadTaskSession) {
+        if (!session.emitProgress(mapOf("phase" to "resolving", "progress" to 0.05))) return
         Thread.sleep(300)
-        if (downloadCancelled.get()) return
-        emit(
-            mapOf(
-                "phase" to "metadata",
-                "progress" to 0.2,
-                "provider" to "Mock SM-DP+",
-                "name" to "Downloaded Profile",
-                "needConfirmation" to true,
+        if (!session.continueWork()) return
+        if (
+            !session.awaitConfirmation(
+                mapOf(
+                    "phase" to "metadata",
+                    "progress" to 0.2,
+                    "provider" to "Mock SM-DP+",
+                    "name" to "Downloaded Profile",
+                    "needConfirmation" to true,
+                )
             )
-        )
-        if (!waitConfirm()) {
-            emit(mapOf("phase" to "cancelled", "error" to "user_cancelled", "done" to false))
-            return
-        }
+        ) return
         for (p in listOf(0.4, 0.65, 0.85, 1.0)) {
-            if (downloadCancelled.get()) {
-                emit(mapOf("phase" to "cancelled", "error" to "cancelled", "done" to false))
-                return
-            }
+            if (!session.continueWork()) return
             Thread.sleep(250)
-            emit(mapOf("phase" to "downloading", "progress" to p, "provider" to "Mock SM-DP+", "name" to "Downloaded Profile"))
+            if (!session.emitProgress(
+                    mapOf(
+                        "phase" to "downloading",
+                        "progress" to p,
+                        "provider" to "Mock SM-DP+",
+                        "name" to "Downloaded Profile",
+                    )
+                )) return
         }
+        if (!session.continueWork()) return
         mockProfiles.add(
-            hashMapOf(
-                "iccid" to "8986${System.currentTimeMillis().toString().takeLast(12)}",
+            mutableMapOf<String, Any>(
+                "iccid" to "mock-${System.currentTimeMillis()}",
                 "name" to "Downloaded Profile",
                 "provider" to "Mock SM-DP+",
                 "enabled" to false,
@@ -444,73 +401,174 @@ class EuiccBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventC
                 "seq" to (mockProfiles.size + 1),
             )
         )
-        emit(mapOf("phase" to "done", "progress" to 1.0, "done" to true, "activationCode" to activationCode))
     }
 
     private suspend fun runCompatibilityCheck(): Map<String, Any> {
-        val items = mutableListOf<Map<String, Any>>()
-        // OMAPI class presence
         val omapiPresent = try {
             Class.forName("android.se.omapi.SEService")
             true
         } catch (_: Throwable) {
             false
         }
-        items.add(
-            mapOf(
-                "title" to "OMAPI present",
-                "ok" to omapiPresent,
-                "detail" to if (omapiPresent) "android.se.omapi.SEService available" else "OMAPI missing on this device/API",
-            )
-        )
-        return try {
-            manager.tryOpenUsbEuiccChannel()
-            val ports = manager.flowAllOpenEuiccPorts().toList()
-            items.add(
-                mapOf(
-                    "title" to "eUICC ports discovered",
-                    "ok" to ports.isNotEmpty(),
-                    "detail" to if (ports.isEmpty()) "No OMAPI/USB eUICC channel opened" else ports.joinToString { "${it.first}/${it.second}" },
-                )
-            )
-            var anyValid = false
-            var eid = ""
-            for ((slotId, portId) in ports) {
-                val ses = manager.flowEuiccSecureElements(slotId, portId).toList()
-                for (se in ses.ifEmpty { listOf(EuiccChannel.SecureElementId.DEFAULT) }) {
+
+        var omapiServiceFailureType: String? = null
+        val slotProbes = if (omapiPresent) {
+            try {
+                probeOmapiSlots()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                omapiServiceFailureType = safeFailureType(error)
+                emptyList()
+            }
+        } else {
+            emptyList()
+        }
+
+        var openPorts = emptyList<Pair<Int, Int>>()
+        val lpaPortFailures = mutableListOf<LpaPortProbeFailure>()
+        var lpaProbeFailureType: String? = null
+        var anyValid = false
+        try {
+            openPorts = manager.flowAllOpenEuiccPorts().toList()
+            for ((slotId, portId) in openPorts) {
+                val secureElements = manager.flowEuiccSecureElements(slotId, portId).toList()
+                for (se in secureElements.ifEmpty { listOf(EuiccChannel.SecureElementId.DEFAULT) }) {
                     try {
-                        manager.withEuiccChannel(slotId, portId, se) { ch ->
-                            anyValid = anyValid || ch.lpa.valid
-                            if (eid.isEmpty()) eid = ch.lpa.eID ?: ""
+                        manager.withEuiccChannel(slotId, portId, se) { channel ->
+                            anyValid = anyValid || channel.lpa.valid
                         }
-                    } catch (_: Exception) {
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (error: Exception) {
+                        lpaPortFailures.add(
+                            LpaPortProbeFailure(slotId, portId, safeFailureType(error))
+                        )
                     }
                 }
             }
-            items.add(
-                mapOf(
-                    "title" to "LPA channel valid",
-                    "ok" to anyValid,
-                    "detail" to if (anyValid) "Opened ISD-R successfully (EID=$eid)" else "Could not open a valid LPA channel (need ARA-M allowlisted card or USB reader)",
-                )
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            lpaProbeFailureType = safeFailureType(error)
+        }
+
+        val items = buildCompatibilityDiagnostics(
+            CompatibilityDiagnosticsInput(
+                packageName = appContext.packageName,
+                signingCertificateSha1s = signingCertificateSha1s(),
+                omapiPresent = omapiPresent,
+                omapiServiceFailureType = omapiServiceFailureType,
+                slotProbes = slotProbes,
+                openPorts = openPorts,
+                lpaPortFailures = lpaPortFailures,
+                lpaProbeFailureType = lpaProbeFailureType,
+                lpaChannelValid = anyValid,
             )
-            items.add(
-                mapOf(
-                    "title" to "ARA-M / removable eUICC",
-                    "ok" to anyValid,
-                    "detail" to "EasyEUICC-class apps need the chip to grant ARA-M access (except USB CCID).",
-                )
+        )
+        val mode = when {
+            anyValid -> "real"
+            omapiServiceFailureType != null || lpaProbeFailureType != null -> "error"
+            else -> "partial"
+        }
+        return mapOf("items" to items.map(CompatibilityDiagnosticItem::toMap), "mode" to mode)
+    }
+
+    private fun signingCertificateSha1s(): List<String> = try {
+        val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            appContext.packageManager.getPackageInfo(
+                appContext.packageName,
+                PackageManager.PackageInfoFlags.of(
+                    PackageManager.GET_SIGNING_CERTIFICATES.toLong()
+                ),
             )
-            mapOf("items" to items, "mode" to if (anyValid) "real" else "partial")
-        } catch (e: Exception) {
-            items.add(
-                mapOf(
-                    "title" to "Probe error",
-                    "ok" to false,
-                    "detail" to (e.message ?: e.toString()),
-                )
+        } else {
+            @Suppress("DEPRECATION")
+            appContext.packageManager.getPackageInfo(
+                appContext.packageName,
+                PackageManager.GET_SIGNING_CERTIFICATES,
             )
-            mapOf("items" to items, "mode" to "error")
+        }
+        packageInfo.signingInfo?.apkContentsSigners.orEmpty()
+            .map { signature -> certificateSha1(signature.toByteArray()) }
+            .distinct()
+            .sorted()
+    } catch (error: Exception) {
+        Log.w(TAG, "Unable to read app signing certificate (${safeFailureType(error)})")
+        emptyList()
+    }
+
+    private suspend fun probeOmapiSlots(): List<OmapiSlotProbe> {
+        val service = connectSEService(appContext)
+        try {
+            check(service.isConnected) { "OMAPI service did not connect" }
+            val isdrAids = parseIsdrAidList(
+                appContainer.preferenceRepository.isdrAidListFlow.first()
+            )
+            return service.readers
+                .filter { reader -> reader.name.startsWith("SIM") }
+                .mapIndexed { index, reader ->
+                    probeOmapiReader(
+                        reader,
+                        parseOmapiSlotId(reader.name, index),
+                        isdrAids,
+                    )
+                }
+        } finally {
+            service.shutdown()
+        }
+    }
+
+    private fun probeOmapiReader(
+        reader: Reader,
+        slotId: Int,
+        isdrAids: List<ByteArray>,
+    ): OmapiSlotProbe {
+        var session: android.se.omapi.Session? = null
+        return try {
+            session = reader.openSession()
+            var accessDenied = false
+            var failureType: String? = null
+            for (isdrAid in isdrAids.ifEmpty { listOf(EUICC_DEFAULT_ISDR_AID.decodeHex()) }) {
+                try {
+                    val channel = session.openLogicalChannel(isdrAid) ?: continue
+                    try {
+                        return OmapiSlotProbe(slotId, OmapiSlotProbeStatus.AUTHORIZED)
+                    } finally {
+                        channel.close()
+                    }
+                } catch (_: SecurityException) {
+                    accessDenied = true
+                } catch (_: NoSuchElementException) {
+                    // This candidate AID is not present; continue with known vendor AIDs.
+                } catch (error: Exception) {
+                    if (failureType == null) failureType = safeFailureType(error)
+                }
+            }
+            when {
+                accessDenied -> OmapiSlotProbe(
+                    slotId,
+                    OmapiSlotProbeStatus.ACCESS_DENIED,
+                    "SecurityException",
+                )
+                failureType != null -> OmapiSlotProbe(
+                    slotId,
+                    OmapiSlotProbeStatus.FAILED,
+                    failureType,
+                )
+                else -> OmapiSlotProbe(slotId, OmapiSlotProbeStatus.ISDR_UNAVAILABLE)
+            }
+        } catch (error: Exception) {
+            OmapiSlotProbe(
+                slotId,
+                OmapiSlotProbeStatus.FAILED,
+                safeFailureType(error),
+            )
+        } finally {
+            try {
+                session?.close()
+            } catch (_: Exception) {
+            }
         }
     }
 
@@ -519,11 +577,11 @@ class EuiccBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventC
         portId: Int,
         seId: EuiccChannel.SecureElementId,
     ): Map<String, Any> {
-        if (isMockChannel(slotId, portId, seId)) {
+        if (shouldUseMockChannel(slotId)) {
             return mapOf(
-                "eid" to "89049032000000000000000000000000",
-                "freeNonVolatileMemory" to 65536,
-                "freeVolatileMemory" to 8192,
+                "eid" to "mock",
+                "freeNonVolatileMemory" to 0,
+                "freeVolatileMemory" to 0,
                 "mock" to true,
             )
         }
@@ -543,7 +601,7 @@ class EuiccBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventC
         portId: Int,
         seId: EuiccChannel.SecureElementId,
     ): Map<String, Any> {
-        if (isMockChannel(slotId, portId, seId)) {
+        if (shouldUseMockChannel(slotId)) {
             mockProfiles.clear()
             return mapOf("ok" to true, "mode" to "mock")
         }
@@ -556,7 +614,7 @@ class EuiccBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventC
         portId: Int,
         seId: EuiccChannel.SecureElementId,
     ): Map<String, Any> {
-        if (isMockChannel(slotId, portId, seId)) {
+        if (shouldUseMockChannel(slotId)) {
             return mapOf(
                 "notifications" to listOf(
                     mapOf("title" to "Mock notification", "detail" to "No real LPA channel", "seq" to 1)
@@ -583,7 +641,7 @@ class EuiccBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventC
         seId: EuiccChannel.SecureElementId,
         seq: Long,
     ): Map<String, Any> {
-        if (isMockChannel(slotId, portId, seId)) return mapOf("ok" to true, "mode" to "mock")
+        if (shouldUseMockChannel(slotId)) return mapOf("ok" to true, "mode" to "mock")
         val ok = manager.withEuiccChannel(slotId, portId, seId) { ch -> ch.lpa.handleNotification(seq) }
         return mapOf("ok" to ok, "mode" to "real")
     }
@@ -594,31 +652,9 @@ class EuiccBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventC
         seId: EuiccChannel.SecureElementId,
         seq: Long,
     ): Map<String, Any> {
-        if (isMockChannel(slotId, portId, seId)) return mapOf("ok" to true, "mode" to "mock")
+        if (shouldUseMockChannel(slotId)) return mapOf("ok" to true, "mode" to "mock")
         val ok = manager.withEuiccChannel(slotId, portId, seId) { ch -> ch.lpa.deleteNotification(seq) }
         return mapOf("ok" to ok, "mode" to "real")
-    }
-
-    /**
-     * Prefer real LPA always. Only force mock when the caller explicitly used
-     * the synthetic mock channel id from listChannels fallback ("mock").
-     * Real ops that fail still fall back to mock inside each method.
-     */
-    private fun isMockChannel(slotId: Int, portId: Int, seId: EuiccChannel.SecureElementId): Boolean {
-        if (useMockOnly.get()) return true
-        // listChannels mock uses seId "0" with label containing mock; we mark via useMockOnly
-        // after a failed real enumeration. Otherwise always attempt real.
-        return false
-    }
-
-    private fun parseActivationCode(raw: String): Pair<String, String?> {
-        var token = raw.trim()
-        if (token.startsWith("LPA:", ignoreCase = true)) token = token.drop(4)
-        val parts = token.split('$').map { it.trim().ifBlank { null } }
-        require(parts.getOrNull(0) == "1") { "Invalid activation code format (expect LPA:1\$...)" }
-        val address = requireNotNull(parts.getOrNull(1)) { "SM-DP+ address required" }
-        val matchingId = parts.getOrNull(2)
-        return address to matchingId
     }
 
     private fun LocalProfileInfo.toMap(seq: Int): Map<String, Any> = mapOf(
@@ -636,22 +672,35 @@ class EuiccBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventC
     )
 
     private fun MethodCall.int(key: String): Int =
-        (argument<Number>(key) ?: 0).toInt()
+        requireIntArgument(key, argument<Any>(key))
+
+    private fun MethodCall.long(key: String): Long =
+        requireLongArgument(key, argument<Any>(key))
 
     private fun MethodCall.bool(key: String): Boolean =
-        argument<Boolean>(key) ?: false
+        requireBooleanArgument(key, argument<Any>(key))
 
     private fun MethodCall.str(key: String): String =
-        argument<String>(key) ?: throw IllegalArgumentException("$key required")
+        requireStringArgument(key, argument<Any>(key))
 
     private fun MethodCall.seId(): EuiccChannel.SecureElementId {
-        val raw = argument<Any>("seId")
-        val id = when (raw) {
-            is Number -> raw.toInt()
-            is String -> raw.toIntOrNull() ?: 0
-            else -> 0
-        }
-        return EuiccChannel.SecureElementId.createFromInt(id)
+        return EuiccChannel.SecureElementId.createFromInt(requireSeIdArgument(argument<Any>("seId")))
+    }
+
+    private fun MethodCall.downloadRequest(): ValidatedDownloadRequest = validateDownloadRequest(
+        slotId = argument<Any>("slotId"),
+        portId = argument<Any>("portId"),
+        seId = argument<Any>("seId"),
+        activationCode = argument<Any>("activationCode"),
+        confirmationCode = argument<Any>("confirmationCode"),
+        imei = argument<Any>("imei"),
+    )
+
+    private fun <T : Any> validated(result: MethodChannel.Result, block: () -> T): T? = try {
+        block()
+    } catch (error: IllegalArgumentException) {
+        result.error("invalid_arguments", error.message, null)
+        null
     }
 
     private fun emit(payload: Map<String, Any?>) {

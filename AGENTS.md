@@ -15,6 +15,8 @@
 | Primary platforms | Android 9+ (API 28); Flutter UI |
 | Not a goal | Managing **internal** phone eSIM without system privilege (same limit as EasyEUICC unprivileged) |
 
+Non-root operation is a hard product constraint: never add Root/Magisk/Shizuku flows, system-app installation requirements, or privileged telephony permissions. The supported in-phone path is OMAPI to a removable eUICC whose ARA-M authorizes Lumina's certificate; USB CCID is the alternative. A card that only authorizes EasyEUICC's unrelated signing certificate will not authorize Lumina.
+
 ### Product goal (user request)
 
 - EasyEUICC is useful but **UI is ugly**
@@ -52,10 +54,10 @@ OMAPI (removable eUICC)  or  USB CCID reader
 | `lib/` | Flutter UI, models, providers, MethodChannel client |
 | `lib/services/euicc_bridge.dart` | Dart API surface (what Flutter pages call) |
 | `lib/pages/` | Home, download/QR, compatibility, settings |
-| `android/app/.../EuiccBridgePlugin.kt` | Real LPA + mock fallback |
+| `android/app/.../EuiccBridgePlugin.kt` | Real LPA + read-only diagnostics; mock fallback is debug-only |
 | `android/app/.../LuminaApplication.kt` | Hosts OpenEUICC `DefaultAppContainer` |
-| `third_party/OpenEUICC/` | Vendored OpenEUICC sources (**GPL-3 only**) |
-| `docs/FEATURE_PARITY.md` | API / capability mapping |
+| `third_party/OpenEUICC/` | Vendored upstream sources; preserve each component's license files |
+| `docs/FEATURE_PARITY.md` | Native/API capability mapping; not proof of Flutter UI exposure |
 | `docs/NATIVE_INTEGRATION.md` | Integration status & build notes |
 | `NOTICE.md` | Upstream license attribution |
 
@@ -63,21 +65,24 @@ OMAPI (removable eUICC)  or  USB CCID reader
 
 | Capability | Status in code |
 |---|---|
-| List channels (OMAPI / USB) | Implemented (real or mock) |
-| List profiles | Implemented |
-| Enable / disable profile | Implemented |
-| Delete / rename profile | Implemented |
-| Download via LPA activation code / QR | Implemented + progress events + confirm |
-| Compatibility check | Implemented |
-| Notifications list / process / delete | Implemented |
-| Memory reset | Implemented |
-| eUICC info (EID, etc.) | Implemented when channel real |
+| List channels (OMAPI / USB) | Real path implemented; debug-only mock and release unavailable states are explicit; hardware validation pending |
+| List profiles | UI/bridge path implemented; hardware validation pending |
+| Enable / disable profile | UI/bridge path implemented; hardware validation pending |
+| Delete / rename profile | UI/bridge path implemented; hardware validation pending |
+| Download via LPA activation code / QR | UI/bridge path, progress events, and confirmation implemented; hardware validation pending |
+| Compatibility check | UI/bridge path implemented |
+| Notifications | Listing is exposed in Flutter; process/delete have native handlers but no Dart API or UI actions |
+| Memory reset | UI/bridge path implemented; destructive hardware path not validated |
+| eUICC info (EID, etc.) | Dart/native API implemented; no dedicated Flutter presentation or hardware validation |
 | Internal eSIM | **Out of scope** (needs privileged OpenEUICC) |
 
 ### Runtime modes
 
+The current implementation intends to select:
+
 1. **`mode=real`**: at least one eUICC channel opened → ops use `channel.lpa.*`
-2. **`mode=mock`**: no channel (emulator / no ARA-M / no USB permission) → in-memory mock so UI still works
+2. **`mode=mock`**: debug build and no channel → in-memory development data
+3. **`mode=unavailable`**: release build and no channel → empty real result; never show invented profiles
 
 Agents must **not** claim “real-card tested” unless logcat/device evidence exists.
 
@@ -90,16 +95,19 @@ Methods (see `lib/services/euicc_bridge.dart` + `EuiccBridgePlugin.kt`):
 
 - `listChannels` → `{channels:[{slotId,portId,seId,label,type,...}], mode}`
 - `listProfiles` / `switchProfile` / `deleteProfile` / `renameProfile`
-- `downloadProfile` + `confirmDownload` + `cancelDownload` (progress on EventChannel)
+- `downloadProfile` returns a `taskId`; every EventChannel event and each confirm/cancel call carries that ID to prevent cross-task delivery
 - `runCompatibilityCheck` / `getEuiccInfo` / `memoryReset`
-- `listNotifications` / `processNotification` / `deleteNotification`
+- Dart-visible notification method: `listNotifications`
+- Native handlers without Dart/UI exposure: `processNotification` / `deleteNotification`
 
 Activation codes: `LPA:1$smdp.example.com$matchingId...` (parsed like OpenEUICC `LPAString`).
 
 ## License constraints (critical)
 
-- Vendored **OpenEUICC / lpac / cJSON** → **GNU GPL v3 only**
-- Any binary that links them must comply with GPL-3 (source offer for the combined work)
+- `third_party/OpenEUICC/LICENSE` applies GPL-3.0-only terms to OpenEUICC.
+- lpac-jni and cJSON retain different licenses in their bundled license files; do not label every vendored component GPL-3.0-only.
+- This repository currently has no top-level license granting rights for Lumina-owned code; `NOTICE.md` is attribution, not a license grant.
+- Do not distribute a binary linking OpenEUICC until the project license, complete corresponding source, notices, and all applicable GPL-3.0 obligations are resolved.
 - Do **not** ship under EasyEUICC package name `im.angry.easyeuicc` (upstream asks derivatives to rename)
 - Do **not** strip `NOTICE.md` / upstream `LICENSE` files
 
@@ -109,36 +117,49 @@ Activation codes: `LPA:1$smdp.example.com$matchingId...` (parsed like OpenEUICC 
 git clone https://github.com/Syngnat/lumina-euicc.git
 cd lumina-euicc
 flutter pub get
-flutter run
+flutter analyze --no-pub
+flutter test --no-pub
+flutter build apk --debug --no-pub
 ```
 
 Requirements:
 
-- Flutter stable
-- Android SDK 35
-- NDK **26.1.10909125** (lpac-jni)
-- CMake / NDK build tools
+- Flutter **3.44.9**
+- JDK 17
+- Android SDK platforms 35 and 36, plus Build Tools 34.0.0 and 35.0.0
+- NDK **28.2.13676358** for the app and transitive pub package `jni` 1.0.3 through Flutter's `flutter.ndkVersion`
+- NDK **26.1.10909125** for vendored OpenEUICC `lpac-jni`
+- CMake 3.22.1 for `jni` 1.0.3's `externalNativeBuild.cmake` path
+- Checked-in Gradle 8.9 wrapper
 
-Low-memory VPS builds are expected to **fail**; do not burn hours retrying full APK builds on small hosts unless resources are expanded.
+OpenEUICC `lpac-jni` uses `externalNativeBuild.ndkBuild`; pub package `jni` 1.0.3 separately uses `externalNativeBuild.cmake`. The app and `mobile_scanner` 6.0.11 compile against SDK 36 and target SDK 35; vendored `app-common` and `lpac-jni` compile against SDK 35. Keep both SDK platforms, both Build Tools versions, both NDKs, and CMake in CI unless those locked dependencies change.
 
-## What’s done vs remaining
+Verified on Windows on 2026-08-08: 16 Flutter tests, 29 Kotlin/JUnit tests, `flutter build apk --debug --no-pub`, and a dedicated-key `:app:assembleRelease` all passed. `apksigner` verified the release APK with v2 signing and certificate SHA-256 `1F:C1:52:76:70:A8:0B:2B:B5:A8:1F:FC:D2:D8:D7:82:C2:AD:00:3A:21:8F:2C:AD:42:9D:30:08:81:07:D8:9F`. Debug/release ZIP alignment passed, and every 64-bit native ELF—including `liblpac-jni.so`—has `LOAD` alignment of at least `2**14`. The APK contains the three configured ABIs and both native build paths. This is not real-card validation; consult GitHub Actions for the current pushed-commit result. Flutter currently warns that Gradle 8.9, AGP 8.7.0, and Kotlin 2.0.21 are nearing its support floor.
 
-### Done (as of last push)
+GitHub Actions uses a `verify` job for pull requests/main/manual runs and a separate dedicated-key `release` job only on trusted `main`. Release secrets live in the `release-signing` Environment, which is restricted to `main`; never move them into source, logs, PR jobs, or artifacts. CI verifies package/SDK/ABI metadata, v2 signing, one signer, the fixed certificate, ZIP alignment, and every arm64-v8a/x86_64 ELF. Do not upload APK/AAB artifacts until binary-distribution licensing is resolved.
+
+Use CI or a sufficiently provisioned Android host for native builds. A failed or unattempted low-resource build is not validation evidence.
+
+## What is present vs remaining
+
+### Present in code
 
 - Flutter scaffold + Material 3 UI
-- Full MethodChannel/EventChannel surface aligned with EasyEUICC ops
+- MethodChannel/EventChannel paths for profiles, download, device operations, and notification listing
 - OpenEUICC vendored under `third_party/`
 - Gradle includes `:app-common`, `:libs:lpac-jni`, `:app-deps`
-- Real LPA bridge with mock fallback
+- Real LPA bridge code path with debug-only mock fallback and release unavailable state; no real-card sign-off
 - Public GitHub repo + docs for handoff
 
 ### Remaining (next agent should focus here)
 
-1. **Real-device validation** on ARA-M removable eUICC (9eSIM / ESTKme / etc.) or USB CCID
-2. Fix compile/link issues if any when building with Flutter+NDK on Windows
-3. Optional: Flutter screens for OpenEUICC developer settings (ISD-R AID list, verbose logs UI) — not required for core parity
-4. Release signing / Play distribution (only if user asks; watch GPL obligations)
-5. Polish UI (animations, empty states, dark theme edge cases)
+1. Reproduce the verified Windows build in GitHub Actions after commit/push
+2. **Real-device validation** on an ARA-M removable eUICC (9eSIM / ESTKme / etc.) or USB CCID
+3. Replace the bridge's independently held `DefaultEuiccChannelManager` with the upstream `EuiccChannelManagerService` lifecycle before claiming hotplug/long-running stability
+4. Expose notification process/delete through the Dart API and Flutter UI if full parity requires them
+5. Optional: Flutter screens for OpenEUICC developer settings (ISD-R AID list, verbose logs UI)
+6. Back up the dedicated release keystore/properties, then resolve top-level licensing, corresponding-source packaging, and distribution only if requested
+7. Polish UI (animations, empty states, dark theme edge cases)
 
 ## Conventions for agents
 
@@ -159,9 +180,9 @@ Low-memory VPS builds are expected to **fail**; do not burn hours retrying full 
 1. Read this file + `docs/FEATURE_PARITY.md` + `docs/NATIVE_INTEGRATION.md`
 2. `git pull` latest `main`
 3. Confirm `third_party/OpenEUICC` exists and has `app-common` + `libs/lpac-jni`
-4. Build on a machine with Flutter+NDK
-5. Run on device; check logcat tag `LuminaEuiccBridge` for `mode=real` vs `mock`
-6. With a real card: list → download → enable/disable → delete
+4. Use Flutter 3.44.9; run `flutter pub get`, `flutter analyze --no-pub`, `flutter test --no-pub`, and `flutter build apk --debug --no-pub`
+5. Run on device; use the compatibility page to distinguish per-slot ARA-M denial from missing OMAPI/ISD-R, then check logcat tag `LuminaEuiccBridge`
+6. With a real card: list → download → enable/disable → delete; record device/log evidence before claiming success
 
 ## Contact / ownership
 

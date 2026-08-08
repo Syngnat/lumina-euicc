@@ -27,7 +27,8 @@ class EuiccBridge {
     final raw = await _methods.invokeMethod<Map>('listChannels');
     final list = (raw?['channels'] as List?) ?? const [];
     return list
-        .map((e) => EuiccChannelInfo.fromMap(Map<dynamic, dynamic>.from(e as Map)))
+        .map((e) =>
+            EuiccChannelInfo.fromMap(Map<dynamic, dynamic>.from(e as Map)))
         .toList();
   }
 
@@ -93,7 +94,7 @@ class EuiccBridge {
     });
   }
 
-  Future<void> downloadProfile({
+  Future<String> downloadProfile({
     required int slotId,
     required int portId,
     required String seId,
@@ -101,7 +102,7 @@ class EuiccBridge {
     String? confirmationCode,
     String? imei,
   }) async {
-    await _methods.invokeMethod('downloadProfile', {
+    final raw = await _methods.invokeMethod<Map>('downloadProfile', {
       'slotId': slotId,
       'portId': portId,
       'seId': seId,
@@ -109,23 +110,33 @@ class EuiccBridge {
       if (confirmationCode != null) 'confirmationCode': confirmationCode,
       if (imei != null) 'imei': imei,
     });
+    final taskId = raw?['taskId']?.toString();
+    if (taskId == null || taskId.isEmpty) {
+      throw StateError('Native download did not return a taskId');
+    }
+    return taskId;
   }
 
-  Future<void> confirmDownload({required bool continueDownload}) async {
+  Future<void> confirmDownload({
+    required String taskId,
+    required bool continueDownload,
+  }) async {
     await _methods.invokeMethod('confirmDownload', {
+      'taskId': taskId,
       'continue': continueDownload,
     });
   }
 
-  Future<void> cancelDownload() async {
-    await _methods.invokeMethod('cancelDownload');
+  Future<void> cancelDownload({required String taskId}) async {
+    await _methods.invokeMethod('cancelDownload', {'taskId': taskId});
   }
 
   Future<List<CompatibilityItem>> runCompatibilityCheck() async {
     final raw = await _methods.invokeMethod<Map>('runCompatibilityCheck');
     final list = (raw?['items'] as List?) ?? const [];
     return list
-        .map((e) => CompatibilityItem.fromMap(Map<dynamic, dynamic>.from(e as Map)))
+        .map((e) =>
+            CompatibilityItem.fromMap(Map<dynamic, dynamic>.from(e as Map)))
         .toList();
   }
 

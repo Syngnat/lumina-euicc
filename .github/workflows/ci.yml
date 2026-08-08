@@ -1,0 +1,225 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Analyze, test, build, and verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+
+    env:
+      EXPECTED_PACKAGE_ID: top.syngnat.lumina.euicc
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Java 17
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Set up Flutter 3.44.9
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+          flutter-version: 3.44.9
+          cache: true
+          pub-cache: true
+
+      - name: Set up Android SDK and native toolchains
+        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4
+        with:
+          packages: >-
+            platform-tools
+            platforms;android-35
+            platforms;android-36
+            build-tools;34.0.0
+            build-tools;35.0.0
+            ndk;26.1.10909125
+            ndk;28.2.13676358
+            cmake;3.22.1
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x android/gradlew
+
+      - name: Resolve locked Flutter dependencies
+        run: flutter pub get --enforce-lockfile
+
+      - name: Verify dependency lockfile
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -n "$(git status --porcelain -- pubspec.lock)" ]]; then
+            echo "pubspec.lock changed after flutter pub get; commit the resolved lockfile." >&2
+            git status --short -- pubspec.lock
+            exit 1
+          fi
+
+      - name: Analyze Dart code
+        run: flutter analyze --no-pub
+
+      - name: Run Flutter tests
+        run: flutter test --no-pub
+
+      - name: Run Kotlin unit tests
+        working-directory: android
+        run: ./gradlew :app:testDebugUnitTest --no-daemon
+
+      - name: Build debug APK
+        run: flutter build apk --debug --no-pub
+
+      - name: Verify Android 16 APK compatibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk="build/app/outputs/flutter-apk/app-debug.apk"
+          badging="$(${ANDROID_HOME}/build-tools/35.0.0/aapt dump badging "${apk}")"
+          grep -Fq "package: name='${EXPECTED_PACKAGE_ID}'" <<<"${badging}"
+          grep -Fq "compileSdkVersion='36'" <<<"${badging}"
+          grep -Fq "sdkVersion:'28'" <<<"${badging}"
+          grep -Fq "targetSdkVersion:'35'" <<<"${badging}"
+          native_code="$(grep -m1 '^native-code:' <<<"${badging}")"
+          for abi in armeabi-v7a arm64-v8a x86_64; do
+            grep -Fq "'${abi}'" <<<"${native_code}"
+          done
+          bash .github/scripts/check-unprivileged-manifest.sh "${apk}"
+          "${ANDROID_HOME}/build-tools/35.0.0/zipalign" -c -P 16 4 "${apk}"
+          bash .github/scripts/check-elf-alignment.sh "${apk}"
+
+  release:
+    name: Build and verify signed release
+    needs: verify
+    if: >-
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    environment: release-signing
+
+    env:
+      EXPECTED_PACKAGE_ID: top.syngnat.lumina.euicc
+      EXPECTED_RELEASE_CERT_SHA256: 1fc1527670a80b2bb5a81ffcd2d8d782c2ad003a218f2cad429d30088107d89f
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Java 17
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Set up Flutter 3.44.9
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+          flutter-version: 3.44.9
+          cache: true
+          pub-cache: true
+
+      - name: Set up Android SDK and native toolchains
+        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4
+        with:
+          packages: >-
+            platform-tools
+            platforms;android-35
+            platforms;android-36
+            build-tools;34.0.0
+            build-tools;35.0.0
+            ndk;26.1.10909125
+            ndk;28.2.13676358
+            cmake;3.22.1
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x android/gradlew
+
+      - name: Resolve locked Flutter dependencies
+        run: flutter pub get --enforce-lockfile
+
+      - name: Configure dedicated release signing
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          : "${ANDROID_KEYSTORE_BASE64:?Missing release-signing environment secret ANDROID_KEYSTORE_BASE64}"
+          : "${ANDROID_KEYSTORE_PASSWORD:?Missing release-signing environment secret ANDROID_KEYSTORE_PASSWORD}"
+          : "${ANDROID_KEY_ALIAS:?Missing release-signing environment secret ANDROID_KEY_ALIAS}"
+          : "${ANDROID_KEY_PASSWORD:?Missing release-signing environment secret ANDROID_KEY_PASSWORD}"
+
+          keystore_path="${RUNNER_TEMP}/lumina-euicc-release.jks"
+          printf '%s' "${ANDROID_KEYSTORE_BASE64}" | base64 --decode > "${keystore_path}"
+          chmod 600 "${keystore_path}"
+          {
+            printf 'storeFile=%s\n' "${keystore_path}"
+            printf 'storePassword=%s\n' "${ANDROID_KEYSTORE_PASSWORD}"
+            printf 'keyAlias=%s\n' "${ANDROID_KEY_ALIAS}"
+            printf 'keyPassword=%s\n' "${ANDROID_KEY_PASSWORD}"
+          } > android/key.properties
+          chmod 600 android/key.properties
+
+      - name: Build dedicated-key release APK
+        run: flutter build apk --release --no-pub
+
+      - name: Verify release signature and Android 16 compatibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk="build/app/outputs/flutter-apk/app-release.apk"
+          apksigner="${ANDROID_HOME}/build-tools/35.0.0/apksigner"
+          verify_output="$("${apksigner}" verify --verbose --print-certs "${apk}")"
+          printf '%s\n' "${verify_output}"
+          grep -Fq "Verified using v2 scheme (APK Signature Scheme v2): true" <<<"${verify_output}"
+          grep -Fq "Number of signers: 1" <<<"${verify_output}"
+          actual_cert_sha256="$(
+            printf '%s\n' "${verify_output}" |
+              sed -n 's/^Signer #1 certificate SHA-256 digest: //p'
+          )"
+          if [[ "${actual_cert_sha256}" != "${EXPECTED_RELEASE_CERT_SHA256}" ]]; then
+            echo "Unexpected release certificate: ${actual_cert_sha256}" >&2
+            exit 1
+          fi
+          badging="$(${ANDROID_HOME}/build-tools/35.0.0/aapt dump badging "${apk}")"
+          grep -Fq "package: name='${EXPECTED_PACKAGE_ID}'" <<<"${badging}"
+          grep -Fq "compileSdkVersion='36'" <<<"${badging}"
+          grep -Fq "sdkVersion:'28'" <<<"${badging}"
+          grep -Fq "targetSdkVersion:'35'" <<<"${badging}"
+          native_code="$(grep -m1 '^native-code:' <<<"${badging}")"
+          for abi in armeabi-v7a arm64-v8a x86_64; do
+            grep -Fq "'${abi}'" <<<"${native_code}"
+          done
+          bash .github/scripts/check-unprivileged-manifest.sh "${apk}"
+          "${ANDROID_HOME}/build-tools/35.0.0/zipalign" -c -P 16 4 "${apk}"
+          bash .github/scripts/check-elf-alignment.sh "${apk}"
+          sha256sum "${apk}"
+
+      - name: Remove release-signing material
+        if: always()
+        shell: bash
+        run: |
+          rm -f android/key.properties "${RUNNER_TEMP}/lumina-euicc-release.jks"

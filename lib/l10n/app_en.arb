@@ -1,0 +1,189 @@
+{
+  "@@locale": "en",
+  "appTitle": "Lumina eUICC",
+  "compatibility": "Compatibility",
+  "settings": "Settings",
+  "newEsim": "New eSIM",
+  "noEuiccFound": "No eUICC found",
+  "noEuiccFoundDescription": "Insert a compatible removable eUICC, or connect a USB CCID reader.",
+  "compatibilityCheck": "Compatibility check",
+  "channels": "Channels",
+  "channelError": "Channel error: {error}",
+  "@channelError": {
+    "placeholders": {"error": {"type": "String"}}
+  },
+  "noProfilesYet": "No profiles yet",
+  "noProfilesDescription": "Download a profile with a QR / activation code.",
+  "profilesLoadError": "Failed to load profiles: {error}",
+  "@profilesLoadError": {
+    "placeholders": {"error": {"type": "String"}}
+  },
+  "deleteProfileQuestion": "Delete profile?",
+  "deleteProfileConfirmation": "Delete “{name}”? This cannot be undone.",
+  "@deleteProfileConfirmation": {
+    "placeholders": {"name": {"type": "String"}}
+  },
+  "cancel": "Cancel",
+  "delete": "Delete",
+  "renameProfile": "Rename profile",
+  "displayName": "Display name",
+  "save": "Save",
+  "enable": "Enable",
+  "disable": "Disable",
+  "rename": "Rename",
+  "enabled": "Enabled",
+  "disabled": "Disabled",
+  "provider": "Provider",
+  "iccidCopied": "ICCID copied",
+  "profileSummary": "#{sequence} · {profileClass}",
+  "@profileSummary": {
+    "placeholders": {
+      "sequence": {"type": "int"},
+      "profileClass": {"type": "String"}
+    }
+  },
+  "profileClass": "{profileClass, select, operational{Operational} testing{Test} test{Test} provisioning{Provisioning} other{{profileClass}}}",
+  "@profileClass": {
+    "placeholders": {"profileClass": {"type": "String"}}
+  },
+  "activationCodeRequired": "Activation code is required",
+  "confirmDownload": "Confirm download",
+  "confirmDownloadDescription": "Provider: {provider}\nName: {name}\n\nContinue?",
+  "@confirmDownloadDescription": {
+    "placeholders": {
+      "provider": {"type": "String"},
+      "name": {"type": "String"}
+    }
+  },
+  "continueAction": "Continue",
+  "profileDownloaded": "Profile downloaded",
+  "downloadProfile": "Download profile",
+  "channelLabel": "Channel: {channel}",
+  "@channelLabel": {
+    "placeholders": {"channel": {"type": "String"}}
+  },
+  "activationCodeLabel": "Activation code / LPA string",
+  "activationCodeHint": "LPA:1$smdp.example.com$...",
+  "scanQr": "Scan QR",
+  "confirmationCodeOptional": "Confirmation code (optional)",
+  "imeiOptional": "IMEI (optional)",
+  "phaseLabel": "Phase: {phase}",
+  "@phaseLabel": {
+    "placeholders": {"phase": {"type": "String"}}
+  },
+  "downloadPhase": "{phase, select, resolving{Resolving} metadata{Reading metadata} preparing{Preparing} connecting{Connecting} authenticating{Authenticating} confirming{Awaiting confirmation} downloading{Downloading} finalizing{Finalizing} cancelling{Cancelling} cancelled{Cancelled} done{Done} error{Failed} other{{phase}}}",
+  "@downloadPhase": {
+    "placeholders": {"phase": {"type": "String"}}
+  },
+  "downloading": "Downloading…",
+  "startDownload": "Start download",
+  "about": "About",
+  "aboutDescription": "Lumina eUICC — Flutter UI aligned with EasyEUICC capabilities.\nCore LPA runs in the Android native bridge.",
+  "memoryReset": "Memory reset",
+  "selectChannelFirst": "Select a channel first",
+  "memoryResetWarning": "Dangerous: wipe profiles on {channel}",
+  "@memoryResetWarning": {
+    "placeholders": {"channel": {"type": "String"}}
+  },
+  "memoryResetQuestion": "Memory reset?",
+  "memoryResetConfirmation": "This may delete profiles on the eUICC. Continue only if you know what you are doing.",
+  "reset": "Reset",
+  "memoryResetRequested": "Memory reset requested",
+  "notifications": "Notifications",
+  "notificationsDescription": "List pending eUICC notifications",
+  "noPendingNotifications": "No pending notifications",
+  "notification": "Notification",
+  "compatibilityError": "Error: {error}",
+  "@compatibilityError": {
+    "placeholders": {"error": {"type": "String"}}
+  },
+  "refresh": "Refresh",
+  "omapiChannelLabel": "Phone slot {slotId} · port {portId} · SE {seId}",
+  "@omapiChannelLabel": {
+    "placeholders": {
+      "slotId": {"type": "int"},
+      "portId": {"type": "int"},
+      "seId": {"type": "String"}
+    }
+  },
+  "usbChannelLabel": "USB reader · slot {slotId} · port {portId} · SE {seId}",
+  "@usbChannelLabel": {
+    "placeholders": {
+      "slotId": {"type": "int"},
+      "portId": {"type": "int"},
+      "seId": {"type": "String"}
+    }
+  },
+  "mockChannelLabel": "Removable eUICC (mock)",
+  "listSeparator": ", ",
+  "compatibilityAppIdentityTitle": "App identity for ARA-M",
+  "compatibilityAppIdentityAvailable": "Package {packageName}; signing certificate SHA-1: {certificates}.",
+  "@compatibilityAppIdentityAvailable": {
+    "placeholders": {
+      "packageName": {"type": "String"},
+      "certificates": {"type": "String"}
+    }
+  },
+  "compatibilityAppIdentityUnavailable": "Package {packageName}; signing certificate SHA-1 is unavailable.",
+  "@compatibilityAppIdentityUnavailable": {
+    "placeholders": {"packageName": {"type": "String"}}
+  },
+  "compatibilityLpaPortTitle": "LPA slot {slotId} / port {portId}",
+  "@compatibilityLpaPortTitle": {
+    "placeholders": {
+      "slotId": {"type": "int"},
+      "portId": {"type": "int"}
+    }
+  },
+  "compatibilityLpaPortFailed": "Read-only LPA validation failed ({failureType}).",
+  "@compatibilityLpaPortFailed": {
+    "placeholders": {"failureType": {"type": "String"}}
+  },
+  "compatibilityLpaProbeTitle": "LPA probe",
+  "compatibilityLpaProbeFailed": "Read-only channel discovery failed ({failureType}).",
+  "@compatibilityLpaProbeFailed": {
+    "placeholders": {"failureType": {"type": "String"}}
+  },
+  "compatibilityOmapiTitle": "OMAPI support",
+  "compatibilityOmapiPresent": "android.se.omapi.SEService is available.",
+  "compatibilityOmapiMissing": "OMAPI is missing on this device or Android version.",
+  "compatibilityOmapiServiceTitle": "OMAPI service",
+  "compatibilityOmapiServiceFailed": "Read-only OMAPI service probe failed ({failureType}).",
+  "@compatibilityOmapiServiceFailed": {
+    "placeholders": {"failureType": {"type": "String"}}
+  },
+  "compatibilityOmapiSlotTitle": "OMAPI phone slot {slotId}",
+  "@compatibilityOmapiSlotTitle": {
+    "placeholders": {"slotId": {"type": "int"}}
+  },
+  "compatibilityOmapiSlotAuthorized": "ISD-R opened for this app certificate.",
+  "compatibilityOmapiSlotAccessDenied": "Phone slot {slotId} is reachable, but OMAPI / ARA-M denied this app certificate.",
+  "@compatibilityOmapiSlotAccessDenied": {
+    "placeholders": {"slotId": {"type": "int"}}
+  },
+  "compatibilityOmapiSlotIsdrUnavailable": "Phone slot {slotId} is reachable, but the default ISD-R AID returned no channel.",
+  "@compatibilityOmapiSlotIsdrUnavailable": {
+    "placeholders": {"slotId": {"type": "int"}}
+  },
+  "compatibilityOmapiSlotFailed": "Read-only OMAPI probe failed ({failureType}).",
+  "@compatibilityOmapiSlotFailed": {
+    "placeholders": {"failureType": {"type": "String"}}
+  },
+  "compatibilityOmapiReadersTitle": "OMAPI UICC readers",
+  "compatibilityOmapiNoReaders": "OMAPI exposed no phone-slot UICC reader.",
+  "compatibilityEuiccPortsTitle": "Discovered eUICC ports",
+  "compatibilityEuiccPortsMissing": "No usable OMAPI or USB eUICC channel was opened.",
+  "compatibilityEuiccPort": "slot {slotId} / port {portId}",
+  "@compatibilityEuiccPort": {
+    "placeholders": {
+      "slotId": {"type": "int"},
+      "portId": {"type": "int"}
+    }
+  },
+  "compatibilityLpaChannelTitle": "LPA channel validity",
+  "compatibilityLpaChannelValid": "A valid ISD-R / LPA channel opened successfully.",
+  "compatibilityLpaChannelInvalid": "No valid LPA channel opened. Check the per-slot result and ARA-M rule.",
+  "compatibilityRootlessTitle": "Rootless access / ARA-M",
+  "compatibilityRootlessReady": "No root is used or required; a real LPA channel is available.",
+  "compatibilityRootlessAraMRequired": "No root is used or required. For a card in the phone, its ARA-M must authorize Lumina's package and signing certificate; an EasyEUICC-only rule does not authorize Lumina. USB CCID uses a separate permission path."
+}

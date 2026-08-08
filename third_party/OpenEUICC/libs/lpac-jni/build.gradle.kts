@@ -10,6 +10,11 @@ android {
     compileSdk = 35
     ndkVersion = "26.1.10909125"
 
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
+
     defaultConfig {
         minSdk = 27
 
@@ -46,7 +51,8 @@ kotlin {
 }
 
 dependencies {
-    implementation("androidx.core:core-ktx:1.19.0")
+    // Keep this aligned with app-deps; 1.19.0 requires compileSdk 37 and AGP 9.1.
+    implementation("androidx.core:core-ktx:1.15.0")
     implementation(platform("org.jetbrains.kotlin:kotlin-bom:1.8.22"))
     implementation("androidx.appcompat:appcompat:1.7.1")
     testImplementation("junit:junit:4.13.2")

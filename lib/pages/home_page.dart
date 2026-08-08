@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../l10n/l10n.dart';
 import '../models/euicc_models.dart';
 import '../services/providers.dart';
 import '../widgets/profile_card.dart';
@@ -20,10 +21,10 @@ class HomePage extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Lumina eUICC'),
+        title: Text(context.l10n.appTitle),
         actions: [
           IconButton(
-            tooltip: 'Compatibility',
+            tooltip: context.l10n.compatibility,
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const CompatibilityPage()),
@@ -32,7 +33,7 @@ class HomePage extends ConsumerWidget {
             icon: const Icon(Icons.verified_user_outlined),
           ),
           IconButton(
-            tooltip: 'Settings',
+            tooltip: context.l10n.settings,
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const SettingsPage()),
@@ -45,16 +46,9 @@ class HomePage extends ConsumerWidget {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: selected == null
             ? null
-            : () async {
-                await Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => DownloadPage(channel: selected),
-                  ),
-                );
-                ref.invalidate(profilesProvider);
-              },
+            : () => _openDownload(context, ref, selected),
         icon: const Icon(Icons.add),
-        label: const Text('New eSIM'),
+        label: Text(context.l10n.newEsim),
       ),
       body: RefreshIndicator(
         onRefresh: () async {
@@ -73,10 +67,9 @@ class HomePage extends ConsumerWidget {
                     if (channels.isEmpty) {
                       return _EmptyCard(
                         icon: '📶',
-                        title: 'No eUICC found',
-                        body:
-                            'Insert a compatible removable eUICC, or connect a USB CCID reader.',
-                        actionLabel: 'Compatibility check',
+                        title: context.l10n.noEuiccFound,
+                        body: context.l10n.noEuiccFoundDescription,
+                        actionLabel: context.l10n.compatibilityCheck,
                         onAction: () {
                           Navigator.of(context).push(
                             MaterialPageRoute(
@@ -90,7 +83,7 @@ class HomePage extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Channels',
+                          context.l10n.channels,
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                         const SizedBox(height: 8),
@@ -100,16 +93,17 @@ class HomePage extends ConsumerWidget {
                           children: [
                             for (final c in channels)
                               ChoiceChip(
-                                label: Text(c.label),
+                                label: Text(context.l10n.euiccChannelLabel(c)),
                                 selected: selected?.seId == c.seId &&
                                     selected?.slotId == c.slotId &&
                                     selected?.portId == c.portId,
                                 onSelected: (_) {
-                                  ref.read(selectedChannelProvider.notifier).state = c;
-                                  ref.invalidate(profilesProvider);
+                                  ref
+                                      .read(selectedChannelKeyProvider.notifier)
+                                      .state = c.key;
                                 },
                                 avatar: Icon(
-                                  c.type == 'usb'
+                                  c.type.toLowerCase() == 'usb'
                                       ? Icons.usb
                                       : Icons.sim_card_outlined,
                                   size: 16,
@@ -122,11 +116,13 @@ class HomePage extends ConsumerWidget {
                     );
                   },
                   loading: () => const LinearProgressIndicator(),
-                  error: (e, _) => Text('Channel error: $e'),
+                  error: (e, _) => Text(context.l10n.channelError('$e')),
                 ),
               ),
             ),
             profilesAsync.when(
+              skipLoadingOnRefresh: false,
+              skipLoadingOnReload: false,
               data: (profiles) {
                 if (profiles.isEmpty) {
                   return SliverFillRemaining(
@@ -135,18 +131,12 @@ class HomePage extends ConsumerWidget {
                       padding: const EdgeInsets.all(24),
                       child: _EmptyCard(
                         icon: '📭',
-                        title: 'No profiles yet',
-                        body: 'Download a profile with a QR / activation code.',
-                        actionLabel: 'New eSIM',
+                        title: context.l10n.noProfilesYet,
+                        body: context.l10n.noProfilesDescription,
+                        actionLabel: context.l10n.newEsim,
                         onAction: selected == null
                             ? null
-                            : () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => DownloadPage(channel: selected),
-                                  ),
-                                );
-                              },
+                            : () => _openDownload(context, ref, selected),
                       ),
                     ),
                   );
@@ -185,13 +175,28 @@ class HomePage extends ConsumerWidget {
                 child: Center(child: CircularProgressIndicator()),
               ),
               error: (e, _) => SliverFillRemaining(
-                child: Center(child: Text('Failed to load profiles: $e')),
+                child: Center(
+                  child: Text(context.l10n.profilesLoadError('$e')),
+                ),
               ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _openDownload(
+    BuildContext context,
+    WidgetRef ref,
+    EuiccChannelInfo channel,
+  ) async {
+    final downloaded = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => DownloadPage(channel: channel)),
+    );
+    if (downloaded == true && context.mounted) {
+      ref.invalidate(profilesProvider);
+    }
   }
 
   Future<void> _switch(
@@ -220,11 +225,15 @@ class HomePage extends ConsumerWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete profile?'),
-        content: Text('Delete “${profile.name}”? This cannot be undone.'),
+        title: Text(context.l10n.deleteProfileQuestion),
+        content: Text(context.l10n.deleteProfileConfirmation(profile.name)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(context.l10n.cancel)),
+          FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(context.l10n.delete)),
         ],
       ),
     );
@@ -249,17 +258,19 @@ class HomePage extends ConsumerWidget {
     final name = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Rename profile'),
+        title: Text(context.l10n.renameProfile),
         content: TextField(
           controller: controller,
-          decoration: const InputDecoration(labelText: 'Display name'),
+          decoration: InputDecoration(labelText: context.l10n.displayName),
           autofocus: true,
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(context.l10n.cancel)),
           FilledButton(
             onPressed: () => Navigator.pop(context, controller.text.trim()),
-            child: const Text('Save'),
+            child: Text(context.l10n.save),
           ),
         ],
       ),

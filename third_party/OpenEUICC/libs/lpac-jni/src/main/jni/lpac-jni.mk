@@ -1,5 +1,4 @@
 LOCAL_PATH := $(call my-dir)
-LOCAL_LDFLAGS += "-Wl,-z,max-page-size=16384"
 
 # function to find all *.c files under a directory
 define all-c-files-under
@@ -33,6 +32,9 @@ include $(BUILD_STATIC_LIBRARY)
 include $(CLEAR_VARS)
 LOCAL_MODULE := lpac-jni
 LOCAL_STATIC_LIBRARIES := lpac-euicc
+# NDK r26 does not enable flexible page sizes automatically. Keep these flags
+# after CLEAR_VARS so they are applied to the final shared library.
+LOCAL_LDFLAGS += -Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384
 LOCAL_C_INCLUDES := \
 	$(LOCAL_PATH)/lpac
 LOCAL_SRC_FILES := \

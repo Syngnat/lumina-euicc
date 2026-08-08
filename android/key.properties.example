@@ -1,0 +1,7 @@
+# Copy this file to android/key.properties or
+# %USERPROFILE%/.android/lumina-euicc/key.properties and keep it private.
+# Use forward slashes for absolute Windows paths.
+storeFile=C:/Users/you/.android/lumina-euicc/lumina-euicc-release.jks
+storePassword=
+keyAlias=lumina-euicc
+keyPassword=

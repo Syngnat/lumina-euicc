@@ -10,21 +10,44 @@ final channelsProvider = FutureProvider<List<EuiccChannelInfo>>((ref) async {
   return bridge.listChannels();
 });
 
-final selectedChannelProvider = StateProvider<EuiccChannelInfo?>((ref) => null);
+typedef EuiccChannelKey = ({int slotId, int portId, String seId});
 
-final profilesProvider = FutureProvider.autoDispose<List<EuiccProfile>>((ref) async {
+extension EuiccChannelIdentity on EuiccChannelInfo {
+  EuiccChannelKey get key => (slotId: slotId, portId: portId, seId: seId);
+}
+
+final selectedChannelKeyProvider =
+    StateProvider<EuiccChannelKey?>((ref) => null);
+
+final selectedChannelProvider = Provider<EuiccChannelInfo?>((ref) {
+  final channels = ref.watch(channelsProvider).valueOrNull;
+  final selectedKey = ref.watch(selectedChannelKeyProvider);
+  return _currentChannel(channels ?? const [], selectedKey);
+});
+
+final profilesProvider =
+    FutureProvider.autoDispose<List<EuiccProfile>>((ref) async {
   final bridge = ref.watch(euiccBridgeProvider);
-  final channel = ref.watch(selectedChannelProvider);
+  final selectedKey = ref.watch(selectedChannelKeyProvider);
   final channels = await ref.watch(channelsProvider.future);
-  final active = channel ?? (channels.isEmpty ? null : channels.first);
+  final active = _currentChannel(channels, selectedKey);
   if (active == null) return const [];
-  if (channel == null) {
-    // seed selection once
-    Future.microtask(() => ref.read(selectedChannelProvider.notifier).state = active);
-  }
   return bridge.listProfiles(
     slotId: active.slotId,
     portId: active.portId,
     seId: active.seId,
   );
 });
+
+EuiccChannelInfo? _currentChannel(
+  List<EuiccChannelInfo> channels,
+  EuiccChannelKey? selectedKey,
+) {
+  if (channels.isEmpty) return null;
+  if (selectedKey != null) {
+    for (final channel in channels) {
+      if (channel.key == selectedKey) return channel;
+    }
+  }
+  return channels.first;
+}

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../l10n/l10n.dart';
+import '../models/euicc_models.dart';
 import '../services/providers.dart';
 
 class CompatibilityPage extends ConsumerStatefulWidget {
@@ -11,7 +13,7 @@ class CompatibilityPage extends ConsumerStatefulWidget {
 }
 
 class _CompatibilityPageState extends ConsumerState<CompatibilityPage> {
-  late Future<List<dynamic>> _future;
+  late Future<List<CompatibilityItem>> _future;
 
   @override
   void initState() {
@@ -23,9 +25,10 @@ class _CompatibilityPageState extends ConsumerState<CompatibilityPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Compatibility'),
+        title: Text(context.l10n.compatibility),
         actions: [
           IconButton(
+            tooltip: context.l10n.refresh,
             onPressed: () {
               setState(() {
                 _future = ref.read(euiccBridgeProvider).runCompatibilityCheck();
@@ -42,7 +45,9 @@ class _CompatibilityPageState extends ConsumerState<CompatibilityPage> {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
+            return Center(
+              child: Text(context.l10n.compatibilityError('${snapshot.error}')),
+            );
           }
           final items = snapshot.data ?? const [];
           return ListView.separated(
@@ -51,15 +56,17 @@ class _CompatibilityPageState extends ConsumerState<CompatibilityPage> {
             separatorBuilder: (_, __) => const SizedBox(height: 8),
             itemBuilder: (context, index) {
               final item = items[index];
-              final ok = item.ok as bool;
+              final localized = context.l10n.localizeCompatibilityItem(item);
               return Card(
                 child: ListTile(
                   leading: Icon(
-                    ok ? Icons.check_circle : Icons.error_outline,
-                    color: ok ? Colors.teal : Theme.of(context).colorScheme.error,
+                    item.ok ? Icons.check_circle : Icons.error_outline,
+                    color: item.ok
+                        ? Colors.teal
+                        : Theme.of(context).colorScheme.error,
                   ),
-                  title: Text(item.title as String),
-                  subtitle: Text(item.detail as String),
+                  title: Text(localized.title),
+                  subtitle: Text(localized.detail),
                 ),
               );
             },

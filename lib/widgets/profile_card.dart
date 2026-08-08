@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../l10n/l10n.dart';
 import '../models/euicc_models.dart';
 
 class ProfileCard extends StatelessWidget {
@@ -47,7 +48,10 @@ class ProfileCard extends StatelessWidget {
                           Expanded(
                             child: Text(
                               profile.name,
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleMedium
+                                  ?.copyWith(
                                     fontWeight: FontWeight.w700,
                                     letterSpacing: -0.2,
                                   ),
@@ -70,18 +74,31 @@ class ProfileCard extends StatelessWidget {
                             },
                             itemBuilder: (context) => [
                               if (!enabled)
-                                const PopupMenuItem(value: 'enable', child: Text('Enable')),
+                                PopupMenuItem(
+                                  value: 'enable',
+                                  child: Text(context.l10n.enable),
+                                ),
                               if (enabled)
-                                const PopupMenuItem(value: 'disable', child: Text('Disable')),
-                              const PopupMenuItem(value: 'rename', child: Text('Rename')),
-                              const PopupMenuItem(value: 'delete', child: Text('Delete')),
+                                PopupMenuItem(
+                                  value: 'disable',
+                                  child: Text(context.l10n.disable),
+                                ),
+                              PopupMenuItem(
+                                value: 'rename',
+                                child: Text(context.l10n.rename),
+                              ),
+                              PopupMenuItem(
+                                value: 'delete',
+                                child: Text(context.l10n.delete),
+                              ),
                             ],
                           ),
                         ],
                       ),
                       const SizedBox(height: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
                           color: enabled
                               ? const Color(0xFFD1FAE5)
@@ -89,7 +106,9 @@ class ProfileCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(999),
                         ),
                         child: Text(
-                          enabled ? 'Enabled' : 'Disabled',
+                          enabled
+                              ? context.l10n.enabled
+                              : context.l10n.disabled,
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
@@ -100,26 +119,36 @@ class ProfileCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      _MetaRow(label: 'Provider', value: profile.provider),
+                      _MetaRow(
+                        label: context.l10n.provider,
+                        value: profile.provider,
+                      ),
                       const SizedBox(height: 6),
                       _MetaRow(
                         label: 'ICCID',
                         value: profile.iccid,
                         mono: true,
                         onLongPress: () async {
-                          await Clipboard.setData(ClipboardData(text: profile.iccid));
+                          await Clipboard.setData(
+                              ClipboardData(text: profile.iccid));
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('ICCID copied')),
+                              SnackBar(
+                                content: Text(context.l10n.iccidCopied),
+                              ),
                             );
                           }
                         },
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '#${profile.seq} · ${profile.profileClass}',
+                        context.l10n.profileSummary(
+                          profile.seq,
+                          context.l10n.profileClass(profile.profileClass),
+                        ),
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: scheme.onSurfaceVariant.withValues(alpha: 0.8),
+                              color: scheme.onSurfaceVariant
+                                  .withValues(alpha: 0.8),
                             ),
                       ),
                     ],

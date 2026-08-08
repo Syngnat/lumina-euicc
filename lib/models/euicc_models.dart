@@ -69,26 +69,35 @@ class EuiccProfile {
 
 class CompatibilityItem {
   const CompatibilityItem({
+    required this.code,
     required this.title,
     required this.ok,
     required this.detail,
+    this.arguments = const {},
   });
 
+  final String code;
   final String title;
   final bool ok;
   final String detail;
+  final Map<String, dynamic> arguments;
 
   factory CompatibilityItem.fromMap(Map<dynamic, dynamic> map) {
     return CompatibilityItem(
+      code: map['code']?.toString() ?? 'unknown',
       title: map['title']?.toString() ?? '',
       ok: map['ok'] as bool? ?? false,
       detail: map['detail']?.toString() ?? '',
+      arguments: Map<String, dynamic>.from(
+        (map['arguments'] as Map?) ?? const {},
+      ),
     );
   }
 }
 
 class DownloadTaskEvent {
   const DownloadTaskEvent({
+    required this.taskId,
     required this.phase,
     this.progress,
     this.provider,
@@ -98,6 +107,7 @@ class DownloadTaskEvent {
     this.error,
   });
 
+  final String taskId;
   final String phase;
   final double? progress;
   final String? provider;
@@ -107,7 +117,12 @@ class DownloadTaskEvent {
   final String? error;
 
   factory DownloadTaskEvent.fromMap(Map<dynamic, dynamic> map) {
+    final taskId = map['taskId']?.toString();
+    if (taskId == null || taskId.isEmpty) {
+      throw const FormatException('Download task event is missing taskId');
+    }
     return DownloadTaskEvent(
+      taskId: taskId,
       phase: map['phase']?.toString() ?? 'unknown',
       progress: (map['progress'] as num?)?.toDouble(),
       provider: map['provider']?.toString(),
