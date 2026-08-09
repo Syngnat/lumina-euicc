@@ -111,6 +111,11 @@ class EuiccBridge {
     return raw?['granted'] == true;
   }
 
+  Future<bool> requestPhoneStatePermission() async {
+    final raw = await _methods.invokeMethod<Map>('requestPhoneStatePermission');
+    return raw?['granted'] == true;
+  }
+
   Future<void> openExactAlarmSettings() =>
       _methods.invokeMethod<void>('openExactAlarmSettings');
 
@@ -153,6 +158,24 @@ class EuiccBridge {
       'iccid': iccid,
       'enable': enable,
     });
+  }
+
+  Future<MicroDataKeepAliveResult> runMicroDataKeepAlive({
+    required int slotId,
+    required int portId,
+    required String seId,
+    required String iccid,
+  }) async {
+    final raw = await _methods.invokeMethod<Map>('runMicroDataKeepAlive', {
+      'slotId': slotId,
+      'portId': portId,
+      'seId': seId,
+      'iccid': iccid,
+    });
+    if (raw == null) {
+      throw StateError('Native micro-data operation returned no result');
+    }
+    return MicroDataKeepAliveResult.fromMap(raw);
   }
 
   Future<void> deleteProfile({

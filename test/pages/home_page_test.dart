@@ -253,6 +253,72 @@ void main() {
     expect(find.text('Keep-alive reminder saved'), findsOneWidget);
   });
 
+  testWidgets(
+      'micro-data action confirms, binds the selected channel and reports success',
+      (tester) async {
+    const channel = EuiccChannelInfo(
+      slotId: 1,
+      portId: 2,
+      seId: '3',
+      label: 'Phone slot 1',
+      type: 'omapi',
+    );
+    final bridge = FakeEuiccBridge()
+      ..channels = const [channel]
+      ..profiles = const [_profile];
+    addTearDown(bridge.dispose);
+
+    await _pumpHome(tester, bridge);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('micro-data-keep-alive-1')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Use cellular data once?'), findsOneWidget);
+    expect(find.textContaining('cannot guarantee keep-alive status'),
+        findsOneWidget);
+    await tester.tap(find.text('Connect once'));
+    await tester.pumpAndSettle();
+
+    expect(bridge.requestPhoneStatePermissionCalls, 1);
+    expect(bridge.microDataKeepAliveCalls, 1);
+    expect(
+      bridge.lastMicroDataChannel,
+      (slotId: 1, portId: 2, seId: '3'),
+    );
+    expect(find.text('Micro-data connection succeeded'), findsOneWidget);
+    expect(find.textContaining('0/1024 bytes'), findsOneWidget);
+    expect(
+        find.textContaining('released its dedicated cellular-network request'),
+        findsOneWidget);
+  });
+
+  testWidgets('micro-data action stops when phone permission is denied',
+      (tester) async {
+    const channel = EuiccChannelInfo(
+      slotId: 0,
+      portId: 0,
+      seId: '0',
+      label: 'Phone slot',
+      type: 'omapi',
+    );
+    final bridge = FakeEuiccBridge()
+      ..channels = const [channel]
+      ..profiles = const [_profile]
+      ..phoneStatePermissionGranted = false;
+    addTearDown(bridge.dispose);
+
+    await _pumpHome(tester, bridge);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('micro-data-keep-alive-1')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Connect once'));
+    await tester.pumpAndSettle();
+
+    expect(bridge.microDataKeepAliveCalls, 0);
+    expect(find.text('Micro-data connection failed'), findsOneWidget);
+    expect(find.textContaining('Phone permission is needed'), findsOneWidget);
+  });
+
   testWidgets('the add-profile FAB waits for the initial channel probe',
       (tester) async {
     const channel = EuiccChannelInfo(

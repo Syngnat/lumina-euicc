@@ -16,6 +16,7 @@ Lumina is intentionally an ordinary, non-root Android app. It does not require o
 | Language | Simplified Chinese and English; follows the Android system locale, with English fallback |
 | Profile list / enable / disable / delete / rename | Flutter and native paths implemented; listing succeeded on one exact 9eSIM-card/device combination, while enable/disable/delete/rename remain unvalidated on hardware |
 | Keep-alive reminders | Per-profile local date/time reminder implemented with Android notifications, reboot/app-update recovery, and exact-alarm fallback; it stores no plaintext ICCID and never writes reminder data to the eUICC |
+| One-tap micro-data check | Foreground-only OMAPI path temporarily enables a selected profile, requests that exact cellular subscription, sends one bodyless HTTPS request, releases Lumina's network request, and restores the previous profile; hardware validation is pending and this cannot prove carrier keep-alive |
 | Download via activation code / QR + progress + confirm | UI, channel contract, and native path implemented; real-card validation pending |
 | Compatibility check | Read-only package/signing identity, per-slot OMAPI/ARA-M, and LPA diagnostics implemented; one field result opened ISD-R on OMAPI slot 1 and discovered port 1/0 without exposing a card identifier |
 | STK management | Settings opens the system SIM Toolkit/LPAe menu through known generic, OPPO/Oplus, MTK, and slot-specific activities; this card-side UI is independent of Lumina's OMAPI/ARA-M authorization |
@@ -39,6 +40,17 @@ the user allows “Alarms & reminders”; otherwise the alert remains scheduled 
 an inexact alarm and may be delayed by the system. Reminder metadata stays in
 the app's private storage and is removed automatically when its profile is
 deleted.
+
+Profile cards also expose an explicit **micro-data keep-alive** action for cards
+installed in a phone OMAPI slot. After confirmation, Lumina may temporarily
+change the active profile, binds one non-redirecting HTTPS `HEAD` request to the
+target Android cellular subscription, releases only Lumina's dedicated network
+request, and restores the previous profile state. The response body limit is
+1 KiB (normally zero), but DNS/TCP/TLS overhead, system traffic, roaming, and
+carrier billing can exceed that amount. A successful response proves only that
+this request reached the network; it does not prove that the carrier extended
+the line's validity. This mutation/network path still requires real-device
+validation.
 
 ## Removable-card compatibility
 

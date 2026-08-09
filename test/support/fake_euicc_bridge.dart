@@ -15,8 +15,21 @@ class FakeEuiccBridge extends EuiccBridge {
   int openSimToolkitCalls = 0;
   int scheduleReminderCalls = 0;
   int cancelReminderCalls = 0;
+  int requestPhoneStatePermissionCalls = 0;
+  int microDataKeepAliveCalls = 0;
   bool reminderNotificationPermissionGranted = true;
   bool reminderExact = true;
+  bool phoneStatePermissionGranted = true;
+  MicroDataKeepAliveResult microDataKeepAliveResult =
+      const MicroDataKeepAliveResult(
+    status: 'connected',
+    restored: true,
+    maxResponseBodyBytes: 1024,
+    httpStatus: 200,
+    responseBodyBytes: 0,
+  );
+  Future<MicroDataKeepAliveResult>? microDataKeepAliveFuture;
+  ({int slotId, int portId, String seId})? lastMicroDataChannel;
   final Map<String, ProfileReminder> reminders = {};
   bool openSimToolkitResult = true;
   Object? openSimToolkitError;
@@ -100,6 +113,26 @@ class FakeEuiccBridge extends EuiccBridge {
 
   @override
   Future<void> openExactAlarmSettings() async {}
+
+  @override
+  Future<bool> requestPhoneStatePermission() async {
+    requestPhoneStatePermissionCalls++;
+    return phoneStatePermissionGranted;
+  }
+
+  @override
+  Future<MicroDataKeepAliveResult> runMicroDataKeepAlive({
+    required int slotId,
+    required int portId,
+    required String seId,
+    required String iccid,
+  }) async {
+    microDataKeepAliveCalls++;
+    lastMicroDataChannel = (slotId: slotId, portId: portId, seId: seId);
+    final future = microDataKeepAliveFuture;
+    if (future != null) return future;
+    return microDataKeepAliveResult;
+  }
 
   @override
   Future<List<EuiccChannelInfo>> listChannels() async => channels;

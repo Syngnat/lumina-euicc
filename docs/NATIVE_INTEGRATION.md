@@ -8,7 +8,7 @@ Lumina is an unprivileged application by design. Root, Magisk, Shizuku, system-a
 
 | Layer | Status |
 |---|---|
-| Flutter UI | Home, profile, per-profile keep-alive reminder, download, compatibility, settings, STK launcher, and software-update screens are present |
+| Flutter UI | Home, profile, per-profile reminder/micro-data action, download, compatibility, settings, STK launcher, and software-update screens are present |
 | Notification UI | Lists pending notifications only; process/delete actions are not exposed in Dart or Flutter |
 | MethodChannel API | Profile/download/device/STK/update operations and notification listing are exposed to Dart; native-only notification process/delete handlers remain |
 | EventChannel download progress | Implemented in code, including confirmation/cancellation flow |
@@ -19,6 +19,7 @@ Lumina is an unprivileged application by design. Root, Magisk, Shizuku, system-a
 | Online update | Official immutable GitHub Release lookup, installed-ABI selection, bounded private-cache download, SHA-256/package/version/exact-signer verification, and Android system-installer launch are implemented; no silent install or card privilege is added |
 | STK launcher | Settings can open generic, OPPO/Oplus, MTK, and slot-specific system SIM Toolkit activities; the card-side LPAe menu does not provide a data channel or ARA-M grant to Lumina |
 | Local keep-alive reminders | App-private reminder records, Android notification permission, exact/inexact AlarmManager scheduling, and boot/package-replace recovery are implemented; this path does not access or mutate the eUICC |
+| Micro-data keep-alive check | Foreground-only OMAPI action, exact-subscription cellular `Network` request, one bodyless HTTPS probe, non-cancellable profile restoration, and sanitized results are implemented; it never toggles global mobile data and remains hardware/carrier-unvalidated |
 
 ## Intended runtime behaviour
 

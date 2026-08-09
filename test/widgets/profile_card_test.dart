@@ -325,6 +325,29 @@ void main() {
 
     expect(cancelCalls, 1);
   });
+
+  testWidgets('exposes one direct micro-data action without duplicating flags',
+      (tester) async {
+    var calls = 0;
+    await _pumpCard(
+      tester,
+      profile: const EuiccProfile(
+        iccid: '8944100000000000001',
+        name: 'Keep-alive line',
+        provider: 'giffgaff',
+        enabled: false,
+        profileClass: 'operational',
+        seq: 7,
+      ),
+      onMicroDataKeepAlive: () => calls += 1,
+    );
+
+    expect(find.text('🇬🇧'), findsOneWidget);
+    expect(
+        find.byTooltip('Run one tiny cellular-network check'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('micro-data-keep-alive-7')));
+    expect(calls, 1);
+  });
 }
 
 Future<void> _pumpCard(
@@ -338,6 +361,7 @@ Future<void> _pumpCard(
   VoidCallback? onSetReminder,
   ProfileReminder? reminder,
   VoidCallback? onCancelReminder,
+  VoidCallback? onMicroDataKeepAlive,
   Size surfaceSize = const Size(360, 800),
   TextScaler textScaler = TextScaler.noScaling,
 }) async {
@@ -365,6 +389,7 @@ Future<void> _pumpCard(
             onSetReminder: onSetReminder,
             reminder: reminder,
             onCancelReminder: onCancelReminder,
+            onMicroDataKeepAlive: onMicroDataKeepAlive,
           ),
         ),
       ),

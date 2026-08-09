@@ -18,6 +18,7 @@ class ProfileCard extends StatelessWidget {
     this.reminder,
     this.reminderLoading = false,
     this.onCancelReminder,
+    this.onMicroDataKeepAlive,
   });
 
   final EuiccProfile profile;
@@ -29,6 +30,7 @@ class ProfileCard extends StatelessWidget {
   final ProfileReminder? reminder;
   final bool reminderLoading;
   final VoidCallback? onCancelReminder;
+  final VoidCallback? onMicroDataKeepAlive;
 
   @override
   Widget build(BuildContext context) {
@@ -137,6 +139,15 @@ class ProfileCard extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (onMicroDataKeepAlive != null)
+                  IconButton(
+                    key: ValueKey('micro-data-keep-alive-${profile.seq}'),
+                    tooltip: context.l10n.microDataKeepAliveTooltip,
+                    visualDensity: VisualDensity.compact,
+                    iconSize: 20,
+                    onPressed: onMicroDataKeepAlive,
+                    icon: const Icon(Icons.network_check_outlined),
+                  ),
                 PopupMenuButton<String>(
                   padding: EdgeInsets.zero,
                   iconSize: 21,

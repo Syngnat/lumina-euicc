@@ -187,6 +187,15 @@ class HomePage extends ConsumerWidget {
                         onCancelReminder: reminder == null
                             ? null
                             : () => _cancelReminder(context, ref, p),
+                        onMicroDataKeepAlive:
+                            selected?.type.toLowerCase() == 'omapi'
+                                ? () => _runMicroDataKeepAlive(
+                                      context,
+                                      ref,
+                                      selected!,
+                                      p,
+                                    )
+                                : null,
                       );
                     },
                   ),
@@ -313,6 +322,175 @@ class HomePage extends ConsumerWidget {
     );
     ref.invalidate(profilesProvider);
   }
+
+  Future<void> _runMicroDataKeepAlive(
+    BuildContext context,
+    WidgetRef ref,
+    EuiccChannelInfo channel,
+    EuiccProfile profile,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(context.l10n.microDataKeepAliveConfirmTitle),
+        content: Text(
+          context.l10n.microDataKeepAliveConfirmDescription(profile.name),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(context.l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(context.l10n.microDataKeepAliveProceed),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    final bridge = ref.read(euiccBridgeProvider);
+    try {
+      final permissionGranted = await bridge.requestPhoneStatePermission();
+      if (!context.mounted) return;
+      if (!permissionGranted) {
+        await _showMicroDataFailure(
+          context,
+          context.l10n.microDataPermissionDenied,
+        );
+        return;
+      }
+
+      final outcome = await showDialog<Object?>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => _MicroDataProgressDialog(
+          operation: () => bridge.runMicroDataKeepAlive(
+            slotId: channel.slotId,
+            portId: channel.portId,
+            seId: channel.seId,
+            iccid: profile.iccid,
+          ),
+        ),
+      );
+      ref.invalidate(channelsProvider);
+      ref.invalidate(profilesProvider);
+      if (!context.mounted) return;
+
+      if (outcome is Exception) {
+        await _showMicroDataFailure(
+          context,
+          context.l10n.microDataGenericFailure,
+        );
+        return;
+      }
+      final result = outcome as MicroDataKeepAliveResult?;
+      if (result == null) return;
+      if (!result.restored) {
+        await showDialog<void>(
+          context: context,
+          builder: (context) => AlertDialog(
+            icon: Icon(
+              Icons.warning_amber_rounded,
+              color: Theme.of(context).colorScheme.error,
+            ),
+            title: Text(context.l10n.microDataRestoreFailedTitle),
+            content: Text(context.l10n.microDataRestoreFailedDescription),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(context.l10n.close),
+              ),
+            ],
+          ),
+        );
+      } else if (result.connected) {
+        await showDialog<void>(
+          context: context,
+          builder: (context) => AlertDialog(
+            icon: Icon(
+              Icons.check_circle_outline,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            title: Text(context.l10n.microDataKeepAliveSuccessTitle),
+            content: Text(
+              context.l10n.microDataKeepAliveSuccessDescription(
+                result.httpStatus ?? 0,
+                result.responseBodyBytes ?? 0,
+                result.maxResponseBodyBytes,
+              ),
+            ),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(context.l10n.close),
+              ),
+            ],
+          ),
+        );
+      } else {
+        await _showMicroDataFailure(
+          context,
+          _microDataFailureReason(context, result.failureCode),
+        );
+      }
+    } catch (error) {
+      debugPrint(
+        '[LuminaMicroData] operation_failed errorType=${error.runtimeType}',
+      );
+      if (context.mounted) {
+        await _showMicroDataFailure(
+          context,
+          context.l10n.microDataGenericFailure,
+        );
+      }
+    }
+  }
+
+  String _microDataFailureReason(BuildContext context, String? code) =>
+      switch (code) {
+        'permissionDenied' => context.l10n.microDataPermissionDenied,
+        'unsupportedChannel' => context.l10n.microDataUnsupportedChannel,
+        'busy' => context.l10n.microDataBusy,
+        'cancelled' => context.l10n.microDataCancelled,
+        'profileNotFound' => context.l10n.microDataProfileNotFound,
+        'channelUnavailable' => context.l10n.microDataChannelUnavailable,
+        'activationFailed' => context.l10n.microDataActivationFailed,
+        'subscriptionUnavailable' =>
+          context.l10n.microDataSubscriptionUnavailable,
+        'cellularNetworkUnavailable' =>
+          context.l10n.microDataCellularNetworkUnavailable,
+        'connectionFailed' ||
+        'invalidHttpResponse' ||
+        'responseLimitExceeded' =>
+          context.l10n.microDataConnectionFailed,
+        _ => context.l10n.microDataGenericFailure,
+      };
+
+  Future<void> _showMicroDataFailure(
+    BuildContext context,
+    String reason,
+  ) =>
+      showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          icon: Icon(
+            Icons.error_outline,
+            color: Theme.of(context).colorScheme.error,
+          ),
+          title: Text(context.l10n.microDataKeepAliveFailedTitle),
+          content: Text(
+            context.l10n.microDataKeepAliveFailedDescription(reason),
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(context.l10n.close),
+            ),
+          ],
+        ),
+      );
 
   Future<void> _delete(
     BuildContext context,
@@ -526,6 +704,53 @@ class HomePage extends ConsumerWidget {
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
   }
+}
+
+class _MicroDataProgressDialog extends StatefulWidget {
+  const _MicroDataProgressDialog({required this.operation});
+
+  final Future<MicroDataKeepAliveResult> Function() operation;
+
+  @override
+  State<_MicroDataProgressDialog> createState() =>
+      _MicroDataProgressDialogState();
+}
+
+class _MicroDataProgressDialogState extends State<_MicroDataProgressDialog> {
+  @override
+  void initState() {
+    super.initState();
+    _run();
+  }
+
+  Future<void> _run() async {
+    Object? outcome;
+    try {
+      outcome = await widget.operation();
+    } on Exception catch (error) {
+      outcome = error;
+    }
+    if (mounted) Navigator.of(context).pop(outcome);
+  }
+
+  @override
+  Widget build(BuildContext context) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          title: Text(context.l10n.microDataKeepAliveRunningTitle),
+          content: Row(
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Text(
+                  context.l10n.microDataKeepAliveRunningDescription,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
 }
 
 class _EmptyCard extends StatelessWidget {

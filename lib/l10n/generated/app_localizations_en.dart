@@ -659,5 +659,97 @@ class AppLocalizationsEn extends AppLocalizations {
   String get openAlarmSettings => 'Open alarm settings';
 
   @override
+  String get microDataKeepAlive => 'Micro-data keep-alive';
+
+  @override
+  String get microDataKeepAliveTooltip => 'Run one tiny cellular-network check';
+
+  @override
+  String get microDataKeepAliveConfirmTitle => 'Use cellular data once?';
+
+  @override
+  String microDataKeepAliveConfirmDescription(String profileName) {
+    return 'Lumina will temporarily enable $profileName, request a cellular network for this profile, send one non-redirecting HTTPS HEAD request to the Lumina GitHub page, then restore the previous profile. Android phone permission is used only to map the card slot to its active subscription; Lumina does not read the phone number or persist an ICCID for this action. The response body is limited to 1 KB (normally 0 bytes), but DNS, TCP, TLS, system traffic, roaming charges, and carrier accounting can exceed 1 KB. This proves only that the connection worked; it cannot guarantee keep-alive status.';
+  }
+
+  @override
+  String get microDataKeepAliveProceed => 'Connect once';
+
+  @override
+  String get microDataKeepAliveRunningTitle => 'Using the selected eSIM…';
+
+  @override
+  String get microDataKeepAliveRunningDescription =>
+      'Keep Lumina open. The previous profile will be restored after the network request.';
+
+  @override
+  String get microDataKeepAliveSuccessTitle =>
+      'Micro-data connection succeeded';
+
+  @override
+  String microDataKeepAliveSuccessDescription(
+      int httpStatus, int bytes, int limit) {
+    return 'The target profile returned HTTP $httpStatus. Response body: $bytes/$limit bytes. Lumina immediately released its dedicated cellular-network request and restored the previous profile state. Confirm the keep-alive validity with the carrier.';
+  }
+
+  @override
+  String get microDataKeepAliveFailedTitle => 'Micro-data connection failed';
+
+  @override
+  String microDataKeepAliveFailedDescription(String reason) {
+    return 'The request did not complete: $reason. No keep-alive success is claimed.';
+  }
+
+  @override
+  String get microDataRestoreFailedTitle => 'Check the active profile now';
+
+  @override
+  String get microDataRestoreFailedDescription =>
+      'Lumina could not restore the previous profile state after the attempt. Open the profile list and select the line you want to keep active.';
+
+  @override
+  String get microDataPermissionDenied =>
+      'Phone permission is needed only to identify the active subscription for this explicit request';
+
+  @override
+  String get microDataUnsupportedChannel =>
+      'this action is available only for a card installed in a phone OMAPI slot, not USB or mock channels';
+
+  @override
+  String get microDataBusy => 'another micro-data operation is already running';
+
+  @override
+  String get microDataCancelled =>
+      'the operation stopped because Lumina left the foreground';
+
+  @override
+  String get microDataProfileNotFound =>
+      'the selected profile is no longer available';
+
+  @override
+  String get microDataChannelUnavailable =>
+      'the eUICC channel is reconnecting or unavailable';
+
+  @override
+  String get microDataActivationFailed =>
+      'the target profile could not be enabled';
+
+  @override
+  String get microDataSubscriptionUnavailable =>
+      'Android did not expose the target profile as an active cellular subscription';
+
+  @override
+  String get microDataCellularNetworkUnavailable =>
+      'Android could not provide a cellular network for the target subscription';
+
+  @override
+  String get microDataConnectionFailed =>
+      'the HTTPS request could not be completed through the target subscription';
+
+  @override
+  String get microDataGenericFailure =>
+      'an unexpected network operation error occurred';
+
+  @override
   String get close => 'Close';
 }

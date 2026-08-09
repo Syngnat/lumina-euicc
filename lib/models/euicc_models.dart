@@ -67,6 +67,42 @@ class EuiccProfile {
   }
 }
 
+class MicroDataKeepAliveResult {
+  const MicroDataKeepAliveResult({
+    required this.status,
+    required this.restored,
+    required this.maxResponseBodyBytes,
+    this.failureCode,
+    this.targetActivationAttempted = false,
+    this.httpStatus,
+    this.responseBodyBytes,
+  });
+
+  final String status;
+  final String? failureCode;
+  final bool restored;
+  final bool targetActivationAttempted;
+  final int? httpStatus;
+  final int? responseBodyBytes;
+  final int maxResponseBodyBytes;
+
+  bool get connected => status == 'connected';
+
+  factory MicroDataKeepAliveResult.fromMap(Map<dynamic, dynamic> map) {
+    return MicroDataKeepAliveResult(
+      status: map['status']?.toString() ?? 'failed',
+      failureCode: map['failureCode']?.toString(),
+      restored: map['restored'] as bool? ?? false,
+      targetActivationAttempted:
+          map['targetActivationAttempted'] as bool? ?? false,
+      httpStatus: (map['httpStatus'] as num?)?.toInt(),
+      responseBodyBytes: (map['responseBodyBytes'] as num?)?.toInt(),
+      maxResponseBodyBytes:
+          (map['maxResponseBodyBytes'] as num?)?.toInt() ?? 1024,
+    );
+  }
+}
+
 class CompatibilityItem {
   const CompatibilityItem({
     required this.code,

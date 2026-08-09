@@ -295,5 +295,42 @@
   "exactAlarmUnavailableTitle": "Exact alarm access is off",
   "exactAlarmUnavailableDescription": "The reminder is scheduled, but Android may delay it. Allow Alarms & reminders for a more precise alert.",
   "openAlarmSettings": "Open alarm settings",
+  "microDataKeepAlive": "Micro-data keep-alive",
+  "microDataKeepAliveTooltip": "Run one tiny cellular-network check",
+  "microDataKeepAliveConfirmTitle": "Use cellular data once?",
+  "microDataKeepAliveConfirmDescription": "Lumina will temporarily enable {profileName}, request a cellular network for this profile, send one non-redirecting HTTPS HEAD request to the Lumina GitHub page, then restore the previous profile. Android phone permission is used only to map the card slot to its active subscription; Lumina does not read the phone number or persist an ICCID for this action. The response body is limited to 1 KB (normally 0 bytes), but DNS, TCP, TLS, system traffic, roaming charges, and carrier accounting can exceed 1 KB. This proves only that the connection worked; it cannot guarantee keep-alive status.",
+  "@microDataKeepAliveConfirmDescription": {
+    "placeholders": {"profileName": {"type": "String"}}
+  },
+  "microDataKeepAliveProceed": "Connect once",
+  "microDataKeepAliveRunningTitle": "Using the selected eSIM…",
+  "microDataKeepAliveRunningDescription": "Keep Lumina open. The previous profile will be restored after the network request.",
+  "microDataKeepAliveSuccessTitle": "Micro-data connection succeeded",
+  "microDataKeepAliveSuccessDescription": "The target profile returned HTTP {httpStatus}. Response body: {bytes}/{limit} bytes. Lumina immediately released its dedicated cellular-network request and restored the previous profile state. Confirm the keep-alive validity with the carrier.",
+  "@microDataKeepAliveSuccessDescription": {
+    "placeholders": {
+      "httpStatus": {"type": "int"},
+      "bytes": {"type": "int"},
+      "limit": {"type": "int"}
+    }
+  },
+  "microDataKeepAliveFailedTitle": "Micro-data connection failed",
+  "microDataKeepAliveFailedDescription": "The request did not complete: {reason}. No keep-alive success is claimed.",
+  "@microDataKeepAliveFailedDescription": {
+    "placeholders": {"reason": {"type": "String"}}
+  },
+  "microDataRestoreFailedTitle": "Check the active profile now",
+  "microDataRestoreFailedDescription": "Lumina could not restore the previous profile state after the attempt. Open the profile list and select the line you want to keep active.",
+  "microDataPermissionDenied": "Phone permission is needed only to identify the active subscription for this explicit request",
+  "microDataUnsupportedChannel": "this action is available only for a card installed in a phone OMAPI slot, not USB or mock channels",
+  "microDataBusy": "another micro-data operation is already running",
+  "microDataCancelled": "the operation stopped because Lumina left the foreground",
+  "microDataProfileNotFound": "the selected profile is no longer available",
+  "microDataChannelUnavailable": "the eUICC channel is reconnecting or unavailable",
+  "microDataActivationFailed": "the target profile could not be enabled",
+  "microDataSubscriptionUnavailable": "Android did not expose the target profile as an active cellular subscription",
+  "microDataCellularNetworkUnavailable": "Android could not provide a cellular network for the target subscription",
+  "microDataConnectionFailed": "the HTTPS request could not be completed through the target subscription",
+  "microDataGenericFailure": "an unexpected network operation error occurred",
   "close": "Close"
 }

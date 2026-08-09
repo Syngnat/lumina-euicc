@@ -75,6 +75,7 @@ OMAPI (removable eUICC)  or  USB CCID reader
 | Enable / disable profile | UI/bridge path implemented; hardware validation pending |
 | Delete / rename profile | UI/bridge path implemented; hardware validation pending |
 | Keep-alive reminders | Per-profile local Android alarm/notification path implemented with reboot/app-update recovery; no plaintext ICCID is persisted and no reminder data is written to the eUICC |
+| One-tap micro-data check | Foreground-only OMAPI path temporarily switches the target profile, requests its exact Android cellular subscription, performs one bodyless HTTPS request, releases the app-scoped network request, and restores the prior profile; it does not control global data, cannot bound carrier-billed bytes, and has no real-card validation |
 | Download via LPA activation code / QR | UI/bridge path, progress events, and confirmation implemented; hardware validation pending |
 | Compatibility check | UI/bridge path implemented |
 | STK management | Settings can open the system SIM Toolkit/card-side LPAe menu; it is an external UI only and does not authorize or return profile data to Lumina |
@@ -113,6 +114,7 @@ Methods (see `lib/services/euicc_bridge.dart` + `EuiccBridgePlugin.kt`):
 
 - `listChannels` → `{channels:[{slotId,portId,seId,label,type,...}], mode}`
 - `listProfiles` / `switchProfile` / `deleteProfile` / `renameProfile`
+- `requestPhoneStatePermission` / `runMicroDataKeepAlive` for the explicit, app-scoped cellular check; success means only that the HTTPS request completed, not that a carrier extended validity
 - `downloadProfile` returns a `taskId`; every EventChannel event and each confirm/cancel call carries that ID to prevent cross-task delivery
 - `runCompatibilityCheck` / `getEuiccInfo` / `memoryReset`
 - `getAppRuntimeInfo` / `prepareUpdateFile` / `verifyAndInstallUpdate` / `openInstallPermissionSettings` for user-confirmed official Release updates

@@ -1137,6 +1137,151 @@ abstract class AppLocalizations {
   /// **'Open alarm settings'**
   String get openAlarmSettings;
 
+  /// No description provided for @microDataKeepAlive.
+  ///
+  /// In en, this message translates to:
+  /// **'Micro-data keep-alive'**
+  String get microDataKeepAlive;
+
+  /// No description provided for @microDataKeepAliveTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Run one tiny cellular-network check'**
+  String get microDataKeepAliveTooltip;
+
+  /// No description provided for @microDataKeepAliveConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Use cellular data once?'**
+  String get microDataKeepAliveConfirmTitle;
+
+  /// No description provided for @microDataKeepAliveConfirmDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Lumina will temporarily enable {profileName}, request a cellular network for this profile, send one non-redirecting HTTPS HEAD request to the Lumina GitHub page, then restore the previous profile. Android phone permission is used only to map the card slot to its active subscription; Lumina does not read the phone number or persist an ICCID for this action. The response body is limited to 1 KB (normally 0 bytes), but DNS, TCP, TLS, system traffic, roaming charges, and carrier accounting can exceed 1 KB. This proves only that the connection worked; it cannot guarantee keep-alive status.'**
+  String microDataKeepAliveConfirmDescription(String profileName);
+
+  /// No description provided for @microDataKeepAliveProceed.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect once'**
+  String get microDataKeepAliveProceed;
+
+  /// No description provided for @microDataKeepAliveRunningTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Using the selected eSIM…'**
+  String get microDataKeepAliveRunningTitle;
+
+  /// No description provided for @microDataKeepAliveRunningDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep Lumina open. The previous profile will be restored after the network request.'**
+  String get microDataKeepAliveRunningDescription;
+
+  /// No description provided for @microDataKeepAliveSuccessTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Micro-data connection succeeded'**
+  String get microDataKeepAliveSuccessTitle;
+
+  /// No description provided for @microDataKeepAliveSuccessDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'The target profile returned HTTP {httpStatus}. Response body: {bytes}/{limit} bytes. Lumina immediately released its dedicated cellular-network request and restored the previous profile state. Confirm the keep-alive validity with the carrier.'**
+  String microDataKeepAliveSuccessDescription(
+      int httpStatus, int bytes, int limit);
+
+  /// No description provided for @microDataKeepAliveFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Micro-data connection failed'**
+  String get microDataKeepAliveFailedTitle;
+
+  /// No description provided for @microDataKeepAliveFailedDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'The request did not complete: {reason}. No keep-alive success is claimed.'**
+  String microDataKeepAliveFailedDescription(String reason);
+
+  /// No description provided for @microDataRestoreFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the active profile now'**
+  String get microDataRestoreFailedTitle;
+
+  /// No description provided for @microDataRestoreFailedDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Lumina could not restore the previous profile state after the attempt. Open the profile list and select the line you want to keep active.'**
+  String get microDataRestoreFailedDescription;
+
+  /// No description provided for @microDataPermissionDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone permission is needed only to identify the active subscription for this explicit request'**
+  String get microDataPermissionDenied;
+
+  /// No description provided for @microDataUnsupportedChannel.
+  ///
+  /// In en, this message translates to:
+  /// **'this action is available only for a card installed in a phone OMAPI slot, not USB or mock channels'**
+  String get microDataUnsupportedChannel;
+
+  /// No description provided for @microDataBusy.
+  ///
+  /// In en, this message translates to:
+  /// **'another micro-data operation is already running'**
+  String get microDataBusy;
+
+  /// No description provided for @microDataCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'the operation stopped because Lumina left the foreground'**
+  String get microDataCancelled;
+
+  /// No description provided for @microDataProfileNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'the selected profile is no longer available'**
+  String get microDataProfileNotFound;
+
+  /// No description provided for @microDataChannelUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'the eUICC channel is reconnecting or unavailable'**
+  String get microDataChannelUnavailable;
+
+  /// No description provided for @microDataActivationFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'the target profile could not be enabled'**
+  String get microDataActivationFailed;
+
+  /// No description provided for @microDataSubscriptionUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Android did not expose the target profile as an active cellular subscription'**
+  String get microDataSubscriptionUnavailable;
+
+  /// No description provided for @microDataCellularNetworkUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Android could not provide a cellular network for the target subscription'**
+  String get microDataCellularNetworkUnavailable;
+
+  /// No description provided for @microDataConnectionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'the HTTPS request could not be completed through the target subscription'**
+  String get microDataConnectionFailed;
+
+  /// No description provided for @microDataGenericFailure.
+  ///
+  /// In en, this message translates to:
+  /// **'an unexpected network operation error occurred'**
+  String get microDataGenericFailure;
+
   /// No description provided for @close.
   ///
   /// In en, this message translates to:

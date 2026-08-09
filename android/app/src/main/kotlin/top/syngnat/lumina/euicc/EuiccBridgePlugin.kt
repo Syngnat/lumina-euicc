@@ -9,6 +9,9 @@ import android.os.Handler
 import android.os.Looper
 import android.se.omapi.Reader
 import android.util.Log
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleOwner
 import com.journeyapps.barcodescanner.ScanIntentResult
 import com.journeyapps.barcodescanner.ScanOptions
 import im.angry.openeuicc.core.DefaultEuiccChannelManager
@@ -31,7 +34,9 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.PluginRegistry
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
@@ -43,6 +48,7 @@ import net.typeblog.lpac_jni.ProfileClass
 import net.typeblog.lpac_jni.ProfileDownloadCallback
 import net.typeblog.lpac_jni.ProfileDownloadInput
 import java.util.concurrent.CancellationException
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
 /**
@@ -66,6 +72,7 @@ class EuiccBridgePlugin :
         private const val EVENTS = "top.syngnat.lumina.euicc/task_events"
         private const val QR_SCAN_REQUEST_CODE = 0x4C51
         private const val NOTIFICATION_PERMISSION_REQUEST_CODE = 0x4C52
+        private const val PHONE_STATE_PERMISSION_REQUEST_CODE = 0x4C53
     }
 
     private lateinit var appContext: Context
@@ -73,21 +80,34 @@ class EuiccBridgePlugin :
     private lateinit var eventChannel: EventChannel
     private var eventSink: EventChannel.EventSink? = null
     private var activityBinding: ActivityPluginBinding? = null
+    private var observedActivityLifecycle: Lifecycle? = null
     private val mainHandler = Handler(Looper.getMainLooper())
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     private val appContainer by lazy { DefaultAppContainer(appContext) }
     private val appUpdateSupport by lazy { AppUpdateSupport(appContext) }
     private val profileReminderSupport by lazy { ProfileReminderSupport(appContext) }
+    private val microDataNetworkSupport by lazy { MicroDataNetworkSupport(appContext) }
     private val simToolkitSupport = SimToolkitSupport()
     private val manager: EuiccChannelManager by lazy {
         DefaultEuiccChannelManager(appContainer, appContext)
     }
 
     private val activeDownload = AtomicReference<DownloadTaskSession?>(null)
+    private val activeMicroDataKeepAlive = AtomicBoolean(false)
+    private val activeMicroDataJob = AtomicReference<Job?>(null)
+    private val exclusiveOperationLock = Any()
     private val pendingNotificationPermission = AtomicReference<MethodChannel.Result?>(null)
+    private val pendingPhoneStatePermission = AtomicReference<MethodChannel.Result?>(null)
     private val qrScanSession = QrScanSession()
     private val profileSwitchCoordinator = BridgeProfileSwitchCoordinator()
+    private val activityLifecycleObserver = LifecycleEventObserver { _, event ->
+        if (event == Lifecycle.Event.ON_STOP) {
+            activeMicroDataJob.get()?.cancel(
+                CancellationException("Activity left the foreground"),
+            )
+        }
+    }
     private val channelDiscovery by lazy {
         BridgeChannelDiscovery(
             discoverRealChannels = ::discoverRealChannels,
@@ -130,6 +150,7 @@ class EuiccBridgePlugin :
         methodChannel.setMethodCallHandler(null)
         eventChannel.setStreamHandler(null)
         activeDownload.getAndSet(null)?.cancel()
+        activeMicroDataJob.get()?.cancel(CancellationException("Flutter engine detached"))
         try {
             manager.invalidate()
         } catch (_: Exception) {
@@ -167,12 +188,21 @@ class EuiccBridgePlugin :
         permissions: Array<out String>,
         grantResults: IntArray,
     ): Boolean {
-        if (requestCode != NOTIFICATION_PERMISSION_REQUEST_CODE) return false
-        val result = pendingNotificationPermission.getAndSet(null) ?: return true
-        val granted = profileReminderSupport.canPostNotifications()
-        if (granted) profileReminderSupport.restoreAll()
-        result.success(mapOf("granted" to granted))
-        return true
+        return when (requestCode) {
+            NOTIFICATION_PERMISSION_REQUEST_CODE -> {
+                val result = pendingNotificationPermission.getAndSet(null) ?: return true
+                val granted = profileReminderSupport.canPostNotifications()
+                if (granted) profileReminderSupport.restoreAll()
+                result.success(mapOf("granted" to granted))
+                true
+            }
+            PHONE_STATE_PERMISSION_REQUEST_CODE -> {
+                val result = pendingPhoneStatePermission.getAndSet(null) ?: return true
+                result.success(mapOf("granted" to microDataNetworkSupport.hasPhoneStatePermission()))
+                true
+            }
+            else -> false
+        }
     }
 
     override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
@@ -235,6 +265,7 @@ class EuiccBridgePlugin :
             }
             "requestReminderNotificationPermission" ->
                 requestReminderNotificationPermission(result)
+            "requestPhoneStatePermission" -> requestPhoneStatePermission(result)
             "openExactAlarmSettings" -> {
                 try {
                     profileReminderSupport.openExactAlarmSettings()
@@ -257,6 +288,7 @@ class EuiccBridgePlugin :
                 )
             }
             "switchProfile" -> async(result) {
+                requireMicroDataIdle()
                 switchProfile(
                     call.int("slotId"),
                     call.int("portId"),
@@ -265,10 +297,66 @@ class EuiccBridgePlugin :
                     call.bool("enable"),
                 )
             }
+            "runMicroDataKeepAlive" -> {
+                val request = validated(result) {
+                    MicroDataKeepAliveRequest(
+                        slotId = call.int("slotId"),
+                        portId = call.int("portId"),
+                        seId = call.seId(),
+                        iccid = call.str("iccid"),
+                    )
+                } ?: return
+                val acquired = synchronized(exclusiveOperationLock) {
+                    if (activeDownload.get() != null || activeMicroDataKeepAlive.get()) {
+                        false
+                    } else {
+                        activeMicroDataKeepAlive.set(true)
+                        true
+                    }
+                }
+                if (!acquired) {
+                    result.success(microDataFailure("busy", restored = true))
+                    return
+                }
+                val job = scope.launch(start = CoroutineStart.LAZY) {
+                    try {
+                        val value = withContext(Dispatchers.IO) {
+                            runMicroDataKeepAlive(request)
+                        }
+                        result.success(value)
+                    } catch (cancelled: MicroDataKeepAliveCancelledException) {
+                        result.success(
+                            microDataFailure("cancelled", restored = cancelled.restored),
+                        )
+                    } catch (cancelled: CancellationException) {
+                        result.success(microDataFailure("cancelled", restored = true))
+                    } catch (error: Exception) {
+                        Log.w(
+                            TAG,
+                            "micro-data keep-alive failed errorType=${error.javaClass.simpleName}",
+                        )
+                        result.success(
+                            mapOf(
+                                "status" to "failed",
+                                "failureCode" to "internalError",
+                                "restored" to false,
+                                "maxResponseBodyBytes" to MicroDataNetworkSupport.MAX_RESPONSE_BODY_BYTES,
+                            ),
+                        )
+                    } finally {
+                        activeMicroDataKeepAlive.set(false)
+                        activeMicroDataJob.compareAndSet(coroutineContext[Job], null)
+                    }
+                }
+                activeMicroDataJob.set(job)
+                job.start()
+            }
             "deleteProfile" -> async(result) {
+                requireMicroDataIdle()
                 deleteProfile(call.int("slotId"), call.int("portId"), call.seId(), call.str("iccid"))
             }
             "renameProfile" -> async(result) {
+                requireMicroDataIdle()
                 renameProfile(
                     call.int("slotId"),
                     call.int("portId"),
@@ -280,8 +368,20 @@ class EuiccBridgePlugin :
             "downloadProfile" -> {
                 val request = validated(result) { call.downloadRequest() } ?: return
                 val session = DownloadTaskSession(::emit)
-                if (!activeDownload.compareAndSet(null, session)) {
-                    result.error("download_busy", "A profile download is already running", null)
+                val busyCode = synchronized(exclusiveOperationLock) {
+                    when {
+                        activeMicroDataKeepAlive.get() -> "micro_data_busy"
+                        !activeDownload.compareAndSet(null, session) -> "download_busy"
+                        else -> null
+                    }
+                }
+                if (busyCode != null) {
+                    val message = if (busyCode == "micro_data_busy") {
+                        "A micro-data operation is running"
+                    } else {
+                        "A profile download is already running"
+                    }
+                    result.error(busyCode, message, null)
                     return
                 }
                 scope.launch(Dispatchers.IO) {
@@ -320,6 +420,7 @@ class EuiccBridgePlugin :
                 getEuiccInfo(call.int("slotId"), call.int("portId"), call.seId())
             }
             "memoryReset" -> async(result) {
+                requireMicroDataIdle()
                 memoryReset(call.int("slotId"), call.int("portId"), call.seId())
             }
             "listNotifications" -> async(result) {
@@ -442,6 +543,141 @@ class EuiccBridgePlugin :
         )
     }
 
+    private suspend fun runMicroDataKeepAlive(
+        request: MicroDataKeepAliveRequest,
+    ): Map<String, Any> {
+        if (request.slotId == EuiccChannelManager.USB_CHANNEL_ID || isMockChannel(request.slotId)) {
+            return microDataFailure("unsupportedChannel", restored = true)
+        }
+        if (!microDataNetworkSupport.hasPhoneStatePermission()) {
+            return microDataFailure("permissionDenied", restored = true)
+        }
+
+        val profiles = try {
+            manager.withEuiccChannel(request.slotId, request.portId, request.seId) { channel ->
+                channel.lpa.profiles.operational
+            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Log.w(TAG, "micro-data profile snapshot failed errorType=${error.javaClass.simpleName}")
+            return microDataFailure("channelUnavailable", restored = true)
+        }
+        val target = profiles.firstOrNull { it.iccid == request.iccid }
+            ?: return microDataFailure("profileNotFound", restored = true)
+        val previous = profiles.firstOrNull { it.isEnabled && it.iccid != target.iccid }
+        val previousSubscriptionId = try {
+            if (target.isEnabled) {
+                null
+            } else {
+                microDataNetworkSupport.activeSubscriptionId(request.slotId, request.portId)
+            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            val code = if (error is SecurityException) {
+                "permissionDenied"
+            } else {
+                "subscriptionUnavailable"
+            }
+            return microDataFailure(code, restored = true)
+        }
+
+        val outcome = MicroDataKeepAliveCoordinator().run(
+            targetInitiallyEnabled = target.isEnabled,
+            previousEnabledProfileExists = previous != null,
+            activateTarget = {
+                switchProfile(
+                    request.slotId,
+                    request.portId,
+                    request.seId,
+                    target.iccid,
+                    enable = true,
+                )
+            },
+            probe = {
+                microDataNetworkSupport.probe(
+                    request.slotId,
+                    request.portId,
+                    excludedSubscriptionId = previousSubscriptionId,
+                )
+            },
+            restorePrevious = {
+                checkNotNull(previous)
+                switchProfile(
+                    request.slotId,
+                    request.portId,
+                    request.seId,
+                    previous.iccid,
+                    enable = true,
+                )
+            },
+            disableTarget = {
+                switchProfile(
+                    request.slotId,
+                    request.portId,
+                    request.seId,
+                    target.iccid,
+                    enable = false,
+                )
+            },
+        )
+
+        outcome.failure?.let { error ->
+            Log.w(
+                TAG,
+                "micro-data operation failed stage=${outcome.failureStage} " +
+                    "errorType=${error.javaClass.simpleName}",
+            )
+        }
+        outcome.restoreFailure?.let { error ->
+            Log.e(
+                TAG,
+                "micro-data profile restoration failed errorType=${error.javaClass.simpleName}",
+            )
+        }
+
+        val probe = outcome.probeResult
+        val response = mutableMapOf<String, Any>(
+            "status" to if (probe != null && outcome.failure == null) "connected" else "failed",
+            "restored" to outcome.restored,
+            "targetActivationAttempted" to outcome.targetActivationAttempted,
+            "maxResponseBodyBytes" to MicroDataNetworkSupport.MAX_RESPONSE_BODY_BYTES,
+        )
+        if (probe != null) {
+            response["httpStatus"] = probe.httpStatus
+            response["responseBodyBytes"] = probe.responseBodyBytes
+        }
+        outcome.failure?.let {
+            response["failureCode"] = microDataFailureCode(it, outcome.failureStage)
+        }
+        if (!outcome.restored) response["restoreFailure"] = true
+        return response
+    }
+
+    private fun microDataFailure(
+        failureCode: String,
+        restored: Boolean,
+    ): Map<String, Any> = mapOf(
+        "status" to "failed",
+        "failureCode" to failureCode,
+        "restored" to restored,
+        "maxResponseBodyBytes" to MicroDataNetworkSupport.MAX_RESPONSE_BODY_BYTES,
+    )
+
+    private fun microDataFailureCode(error: Exception, stage: String?): String = when {
+        stage == "activation" -> "activationFailed"
+        error is MicroDataKeepAliveException -> error.failureCode
+        error is EuiccChannelManager.EuiccChannelNotFoundException -> "channelUnavailable"
+        else -> "networkFailed"
+    }
+
+    private fun requireMicroDataIdle() {
+        check(!activeMicroDataKeepAlive.get()) {
+            "A micro-data keep-alive operation is already running"
+        }
+    }
+
     private suspend fun switchProfile(
         slotId: Int,
         portId: Int,
@@ -553,14 +789,19 @@ class EuiccBridgePlugin :
     }
 
     private fun attachActivity(binding: ActivityPluginBinding) {
+        observedActivityLifecycle?.removeObserver(activityLifecycleObserver)
         activityBinding?.removeActivityResultListener(this)
         activityBinding?.removeRequestPermissionsResultListener(this)
         activityBinding = binding
         binding.addActivityResultListener(this)
         binding.addRequestPermissionsResultListener(this)
+        observedActivityLifecycle = (binding.activity as? LifecycleOwner)?.lifecycle
+        observedActivityLifecycle?.addObserver(activityLifecycleObserver)
     }
 
     private fun detachActivity(interruptScan: Boolean) {
+        observedActivityLifecycle?.removeObserver(activityLifecycleObserver)
+        observedActivityLifecycle = null
         activityBinding?.removeActivityResultListener(this)
         activityBinding?.removeRequestPermissionsResultListener(this)
         activityBinding = null
@@ -569,6 +810,11 @@ class EuiccBridgePlugin :
             pendingNotificationPermission.getAndSet(null)?.error(
                 "notification_permission_interrupted",
                 "Notification permission request was interrupted",
+                null,
+            )
+            pendingPhoneStatePermission.getAndSet(null)?.error(
+                "phone_permission_interrupted",
+                "Phone-state permission request was interrupted",
                 null,
             )
         }
@@ -603,6 +849,34 @@ class EuiccBridgePlugin :
         activity.requestPermissions(
             arrayOf(Manifest.permission.POST_NOTIFICATIONS),
             NOTIFICATION_PERMISSION_REQUEST_CODE,
+        )
+    }
+
+    private fun requestPhoneStatePermission(result: MethodChannel.Result) {
+        if (microDataNetworkSupport.hasPhoneStatePermission()) {
+            result.success(mapOf("granted" to true))
+            return
+        }
+        val activity = activityBinding?.activity
+        if (activity == null) {
+            result.error(
+                "phone_permission_unavailable",
+                "Phone-state permission requires a foreground activity",
+                null,
+            )
+            return
+        }
+        if (!pendingPhoneStatePermission.compareAndSet(null, result)) {
+            result.error(
+                "phone_permission_busy",
+                "A phone-state permission request is already running",
+                null,
+            )
+            return
+        }
+        activity.requestPermissions(
+            arrayOf(Manifest.permission.READ_PHONE_STATE),
+            PHONE_STATE_PERMISSION_REQUEST_CODE,
         )
     }
 
@@ -955,3 +1229,10 @@ class EuiccBridgePlugin :
         mainHandler.post { eventSink?.success(payload) }
     }
 }
+
+private data class MicroDataKeepAliveRequest(
+    val slotId: Int,
+    val portId: Int,
+    val seId: EuiccChannel.SecureElementId,
+    val iccid: String,
+)

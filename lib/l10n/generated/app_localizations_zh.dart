@@ -634,5 +634,87 @@ class AppLocalizationsZh extends AppLocalizations {
   String get openAlarmSettings => '打开闹钟设置';
 
   @override
+  String get microDataKeepAlive => '微流量保号';
+
+  @override
+  String get microDataKeepAliveTooltip => '使用目标号码进行一次微流量联网';
+
+  @override
+  String get microDataKeepAliveConfirmTitle => '使用一次蜂窝网络？';
+
+  @override
+  String microDataKeepAliveConfirmDescription(String profileName) {
+    return 'Lumina 将临时启用“$profileName”，为该配置申请专用蜂窝网络，向 Lumina GitHub 页面发送一次不跟随跳转的 HTTPS HEAD 请求，然后恢复原配置。Android 电话权限只用于把卡槽映射到活动订阅；本操作不读取手机号码，也不持久化 ICCID。响应正文限制为 1 KB（通常为 0 字节），但 DNS、TCP、TLS、系统流量、漫游费用及运营商计费可能超过 1 KB。此操作只能证明联网成功，不能保证运营商已完成保号。';
+  }
+
+  @override
+  String get microDataKeepAliveProceed => '联网一次';
+
+  @override
+  String get microDataKeepAliveRunningTitle => '正在使用所选 eSIM…';
+
+  @override
+  String get microDataKeepAliveRunningDescription =>
+      '请保持 Lumina 在前台。网络请求结束后会恢复原配置。';
+
+  @override
+  String get microDataKeepAliveSuccessTitle => '微流量联网成功';
+
+  @override
+  String microDataKeepAliveSuccessDescription(
+      int httpStatus, int bytes, int limit) {
+    return '目标配置已返回 HTTP $httpStatus，响应正文 $bytes/$limit 字节。Lumina 已立即释放本应用的专用蜂窝网络请求，并恢复原配置状态。保号有效期仍请向运营商确认。';
+  }
+
+  @override
+  String get microDataKeepAliveFailedTitle => '微流量联网失败';
+
+  @override
+  String microDataKeepAliveFailedDescription(String reason) {
+    return '本次请求未完成：$reason。Lumina 不会将其视为保号成功。';
+  }
+
+  @override
+  String get microDataRestoreFailedTitle => '请立即检查当前启用配置';
+
+  @override
+  String get microDataRestoreFailedDescription =>
+      '尝试结束后 Lumina 未能恢复原配置状态。请返回配置列表，手动选择需要保持启用的号码。';
+
+  @override
+  String get microDataPermissionDenied => '需要电话权限，仅用于这次操作识别目标蜂窝订阅';
+
+  @override
+  String get microDataUnsupportedChannel =>
+      '此功能只支持安装在手机 OMAPI 卡槽中的卡，不支持 USB 或模拟通道';
+
+  @override
+  String get microDataBusy => '已有一次微流量操作正在进行';
+
+  @override
+  String get microDataCancelled => 'Lumina 离开前台，本次操作已停止';
+
+  @override
+  String get microDataProfileNotFound => '所选配置已不存在';
+
+  @override
+  String get microDataChannelUnavailable => 'eUICC 通道正在重连或不可用';
+
+  @override
+  String get microDataActivationFailed => '无法启用目标配置';
+
+  @override
+  String get microDataSubscriptionUnavailable => 'Android 未将目标配置识别为活动蜂窝订阅';
+
+  @override
+  String get microDataCellularNetworkUnavailable => 'Android 无法为目标订阅提供蜂窝网络';
+
+  @override
+  String get microDataConnectionFailed => '无法通过目标订阅完成 HTTPS 请求';
+
+  @override
+  String get microDataGenericFailure => '发生未预期的联网操作错误';
+
+  @override
   String get close => '关闭';
 }
