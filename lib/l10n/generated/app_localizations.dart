@@ -224,6 +224,84 @@ abstract class AppLocalizations {
   /// **'Channels'**
   String get channels;
 
+  /// No description provided for @dashboardSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Digital eSIM passport'**
+  String get dashboardSubtitle;
+
+  /// No description provided for @profilesSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Profiles'**
+  String get profilesSectionTitle;
+
+  /// No description provided for @profileCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} profiles'**
+  String profileCount(int count);
+
+  /// No description provided for @localReminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Local reminders'**
+  String get localReminders;
+
+  /// No description provided for @eidUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'EID unavailable'**
+  String get eidUnavailable;
+
+  /// No description provided for @freeMemory.
+  ///
+  /// In en, this message translates to:
+  /// **'{size} free'**
+  String freeMemory(String size);
+
+  /// No description provided for @freeMemoryUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Free space unknown'**
+  String get freeMemoryUnknown;
+
+  /// No description provided for @profileSizeUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Size unknown'**
+  String get profileSizeUnknown;
+
+  /// No description provided for @reminderUnset.
+  ///
+  /// In en, this message translates to:
+  /// **'No reminder'**
+  String get reminderUnset;
+
+  /// No description provided for @reminderExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Expired'**
+  String get reminderExpired;
+
+  /// No description provided for @reminderDaysRemaining.
+  ///
+  /// In en, this message translates to:
+  /// **'{days}d'**
+  String reminderDaysRemaining(int days);
+
+  /// No description provided for @profileSwitchFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not switch the profile. Refresh and try again.'**
+  String get profileSwitchFailed;
+
+  /// No description provided for @profileActions.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile actions'**
+  String get profileActions;
+
   /// No description provided for @channelError.
   ///
   /// In en, this message translates to:

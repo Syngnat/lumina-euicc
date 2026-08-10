@@ -24,6 +24,28 @@
     "placeholders": {"slotId": {"type": "int"}}
   },
   "channels": "Channels",
+  "dashboardSubtitle": "Digital eSIM passport",
+  "profilesSectionTitle": "Profiles",
+  "profileCount": "{count} profiles",
+  "@profileCount": {
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "localReminders": "Local reminders",
+  "eidUnavailable": "EID unavailable",
+  "freeMemory": "{size} free",
+  "@freeMemory": {
+    "placeholders": {"size": {"type": "String"}}
+  },
+  "freeMemoryUnknown": "Free space unknown",
+  "profileSizeUnknown": "Size unknown",
+  "reminderUnset": "No reminder",
+  "reminderExpired": "Expired",
+  "reminderDaysRemaining": "{days}d",
+  "@reminderDaysRemaining": {
+    "placeholders": {"days": {"type": "int"}}
+  },
+  "profileSwitchFailed": "Could not switch the profile. Refresh and try again.",
+  "profileActions": "Profile actions",
   "channelError": "Channel error: {error}",
   "@channelError": {
     "placeholders": {"error": {"type": "String"}}

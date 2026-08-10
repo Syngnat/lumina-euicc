@@ -74,6 +74,51 @@ class AppLocalizationsZh extends AppLocalizations {
   String get channels => '通道';
 
   @override
+  String get dashboardSubtitle => '数字 eSIM 护照';
+
+  @override
+  String get profilesSectionTitle => '配置';
+
+  @override
+  String profileCount(int count) {
+    return '$count 个配置';
+  }
+
+  @override
+  String get localReminders => '本地提醒';
+
+  @override
+  String get eidUnavailable => 'EID 暂不可用';
+
+  @override
+  String freeMemory(String size) {
+    return '$size 可用';
+  }
+
+  @override
+  String get freeMemoryUnknown => '可用空间未知';
+
+  @override
+  String get profileSizeUnknown => '大小未知';
+
+  @override
+  String get reminderUnset => '未设置提醒';
+
+  @override
+  String get reminderExpired => '已过期';
+
+  @override
+  String reminderDaysRemaining(int days) {
+    return '$days天';
+  }
+
+  @override
+  String get profileSwitchFailed => '无法切换配置，请刷新后重试。';
+
+  @override
+  String get profileActions => '配置操作';
+
+  @override
   String channelError(String error) {
     return '通道错误：$error';
   }

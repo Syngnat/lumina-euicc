@@ -32,6 +32,17 @@ final selectedChannelProvider = Provider<EuiccChannelInfo?>((ref) {
   return _currentChannel(channels ?? const [], selectedKey);
 });
 
+final euiccInfoProvider = FutureProvider.autoDispose<EuiccInfo?>((ref) async {
+  final channel = ref.watch(selectedChannelProvider);
+  if (channel == null) return null;
+  final raw = await ref.watch(euiccBridgeProvider).getEuiccInfo(
+        slotId: channel.slotId,
+        portId: channel.portId,
+        seId: channel.seId,
+      );
+  return EuiccInfo.fromMap(raw);
+});
+
 final profileReminderProvider =
     FutureProvider.autoDispose.family<ProfileReminder?, String>((ref, iccid) {
   return ref.watch(euiccBridgeProvider).getProfileReminder(iccid);

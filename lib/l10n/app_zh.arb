@@ -21,6 +21,28 @@
   "compatibilityNoSlots": "无",
   "compatibilitySlotName": "SIM {slotId}",
   "channels": "通道",
+  "dashboardSubtitle": "数字 eSIM 护照",
+  "profilesSectionTitle": "配置",
+  "profileCount": "{count} 个配置",
+  "@profileCount": {
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "localReminders": "本地提醒",
+  "eidUnavailable": "EID 暂不可用",
+  "freeMemory": "{size} 可用",
+  "@freeMemory": {
+    "placeholders": {"size": {"type": "String"}}
+  },
+  "freeMemoryUnknown": "可用空间未知",
+  "profileSizeUnknown": "大小未知",
+  "reminderUnset": "未设置提醒",
+  "reminderExpired": "已过期",
+  "reminderDaysRemaining": "{days}天",
+  "@reminderDaysRemaining": {
+    "placeholders": {"days": {"type": "int"}}
+  },
+  "profileSwitchFailed": "无法切换配置，请刷新后重试。",
+  "profileActions": "配置操作",
   "channelError": "通道错误：{error}",
   "noProfilesYet": "暂无配置文件",
   "noProfilesDescription": "使用二维码或激活码下载配置文件。",

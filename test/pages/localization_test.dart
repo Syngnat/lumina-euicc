@@ -43,31 +43,37 @@ void main() {
       (tester) async {
     await _pumpHome(tester, const Locale('zh', 'CN'));
 
-    expect(find.text('通道'), findsOneWidget);
+    expect(find.text('数字 eSIM 护照'), findsOneWidget);
     expect(find.text('新增 eSIM'), findsWidgets);
-    expect(find.text('手机卡槽 0 · 端口 0 · 安全元件 1'), findsOneWidget);
+    expect(
+      tester.getSemantics(find.byKey(const Key('channel-segment-0-0-1'))).label,
+      contains('手机卡槽 0 · 端口 0 · 安全元件 1'),
+    );
     expect(find.text('Removable eUICC'), findsNothing);
-    expect(find.text('Channels'), findsNothing);
+    expect(find.text('Digital eSIM passport'), findsNothing);
   });
 
   testWidgets('home remains English for an English system locale',
       (tester) async {
     await _pumpHome(tester, const Locale('en', 'US'));
 
-    expect(find.text('Channels'), findsOneWidget);
+    expect(find.text('Digital eSIM passport'), findsOneWidget);
     expect(find.text('New eSIM'), findsWidgets);
-    expect(find.text('Phone slot 0 · port 0 · SE 1'), findsOneWidget);
+    expect(
+      tester.getSemantics(find.byKey(const Key('channel-segment-0-0-1'))).label,
+      contains('Phone slot 0 · port 0 · SE 1'),
+    );
     expect(find.text('Removable eUICC'), findsNothing);
-    expect(find.text('通道'), findsNothing);
+    expect(find.text('数字 eSIM 护照'), findsNothing);
   });
 
   testWidgets('home falls back to English for an unsupported system locale',
       (tester) async {
     await _pumpHome(tester, const Locale('fr', 'FR'));
 
-    expect(find.text('Channels'), findsOneWidget);
+    expect(find.text('Digital eSIM passport'), findsOneWidget);
     expect(find.text('New eSIM'), findsWidgets);
-    expect(find.text('通道'), findsNothing);
+    expect(find.text('数字 eSIM 护照'), findsNothing);
   });
 }
 

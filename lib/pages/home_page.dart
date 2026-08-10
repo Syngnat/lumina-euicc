@@ -11,226 +11,233 @@ import 'compatibility_page.dart';
 import 'download_page.dart';
 import 'settings_page.dart';
 
-class HomePage extends ConsumerWidget {
+class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends ConsumerState<HomePage> {
+  String? _switchingIccid;
+
+  @override
+  Widget build(BuildContext context) {
     final channelsAsync = ref.watch(channelsProvider);
     final profilesAsync = ref.watch(profilesProvider);
     final selected = ref.watch(selectedChannelProvider);
-    final scheme = Theme.of(context).colorScheme;
+    final euiccInfoAsync = ref.watch(euiccInfoProvider);
+    final profileCount = profilesAsync.valueOrNull?.length ?? 0;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(context.l10n.appTitle),
-        actions: [
-          IconButton(
-            tooltip: context.l10n.compatibility,
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const CompatibilityPage()),
-              );
-            },
-            icon: const Icon(Icons.verified_user_outlined),
-          ),
-          IconButton(
-            tooltip: context.l10n.settings,
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const SettingsPage()),
-              );
-            },
-            icon: const Icon(Icons.settings_outlined),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        key: const Key('newEsimButton'),
-        onPressed: () => _openDownloadForCurrentChannel(context, ref),
-        icon: const Icon(Icons.add),
-        label: Text(context.l10n.newEsim),
-      ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          ref.invalidate(channelsProvider);
-          ref.invalidate(profilesProvider);
-          await ref.read(profilesProvider.future);
-        },
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                child: channelsAsync.when(
-                  data: (channels) {
-                    if (channels.isEmpty) {
-                      return _EmptyCard(
-                        icon: '📶',
-                        title: context.l10n.noEuiccFound,
-                        body: context.l10n.noEuiccFoundDescription,
-                        actionLabel: context.l10n.compatibilityCheck,
-                        onAction: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const CompatibilityPage(),
+      body: SafeArea(
+        bottom: false,
+        child: RefreshIndicator(
+          onRefresh: _refresh,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+                  child: Column(
+                    children: [
+                      _DashboardHeader(
+                        onCompatibility: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const CompatibilityPage(),
+                          ),
+                        ),
+                        onRefresh: _refresh,
+                        onSettings: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const SettingsPage(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      channelsAsync.when(
+                        data: (channels) => channels.isEmpty
+                            ? const SizedBox.shrink()
+                            : _ChannelSwitcher(
+                                channels: channels,
+                                selected: selected,
+                                selectedProfileCount: profileCount,
+                                onSelected: (channel) {
+                                  ref
+                                      .read(
+                                        selectedChannelKeyProvider.notifier,
+                                      )
+                                      .state = channel.key;
+                                },
+                              ),
+                        loading: () => const LinearProgressIndicator(),
+                        error: (_, __) => const SizedBox.shrink(),
+                      ),
+                      const SizedBox(height: 10),
+                      _EuiccIdentityStrip(
+                        info: euiccInfoAsync.valueOrNull,
+                        infoLoading: euiccInfoAsync.isLoading,
+                        onNotifications: selected == null
+                            ? null
+                            : () => _showNotifications(context, ref, selected),
+                        onAdd: () =>
+                            _openDownloadForCurrentChannel(context, ref),
+                      ),
+                      if (selected != null) ...[
+                        const SizedBox(height: 11),
+                        _ProfilesSectionHeader(count: profileCount),
+                        const SizedBox(height: 7),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              if (channelsAsync.valueOrNull?.isEmpty == true)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: _EmptyCard(
+                      icon: '📶',
+                      title: context.l10n.noEuiccFound,
+                      body: context.l10n.noEuiccFoundDescription,
+                      actionLabel: context.l10n.compatibilityCheck,
+                      onAction: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const CompatibilityPage(),
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+              else
+                profilesAsync.when(
+                  skipLoadingOnRefresh: false,
+                  skipLoadingOnReload: false,
+                  data: (profiles) {
+                    if (profiles.isEmpty) {
+                      return SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: _EmptyCard(
+                            icon: '📭',
+                            title: context.l10n.noProfilesYet,
+                            body: context.l10n.noProfilesDescription,
+                            actionLabel: context.l10n.newEsim,
+                            onAction: () =>
+                                _openDownloadForCurrentChannel(context, ref),
+                          ),
+                        ),
+                      );
+                    }
+                    return SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(14, 0, 14, 16),
+                      sliver: SliverList.builder(
+                        itemCount: profiles.length,
+                        itemBuilder: (context, index) {
+                          final p = profiles[index];
+                          final reminderAsync =
+                              ref.watch(profileReminderProvider(p.iccid));
+                          final reminder = reminderAsync.valueOrNull;
+                          return Padding(
+                            padding: EdgeInsets.only(
+                              bottom: index == profiles.length - 1 ? 0 : 7,
+                            ),
+                            child: ProfileCard(
+                              profile: p,
+                              reminder: reminder,
+                              reminderLoading: reminderAsync.isLoading,
+                              isSwitching: _switchingIccid == p.iccid,
+                              switchLocked: _switchingIccid != null,
+                              onEnable: selected == null
+                                  ? null
+                                  : () => _switch(selected, p, true),
+                              onDisable: selected == null
+                                  ? null
+                                  : () => _switch(selected, p, false),
+                              onDelete: selected == null
+                                  ? null
+                                  : () => _delete(
+                                        context,
+                                        ref,
+                                        selected,
+                                        p,
+                                      ),
+                              onRename: selected == null
+                                  ? null
+                                  : () => _rename(
+                                        context,
+                                        ref,
+                                        selected,
+                                        p,
+                                      ),
+                              onSetReminder: reminderAsync.isLoading
+                                  ? null
+                                  : () => _setReminder(
+                                        context,
+                                        ref,
+                                        p,
+                                        reminder,
+                                      ),
+                              onCancelReminder: reminder == null
+                                  ? null
+                                  : () => _cancelReminder(context, ref, p),
+                              onMicroDataKeepAlive:
+                                  selected?.type.toLowerCase() == 'omapi'
+                                      ? () => _runMicroDataKeepAlive(
+                                            context,
+                                            ref,
+                                            selected!,
+                                            p,
+                                          )
+                                      : null,
                             ),
                           );
                         },
-                      );
-                    }
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          context.l10n.channels,
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            for (final c in channels)
-                              ChoiceChip(
-                                label: Text(context.l10n.euiccChannelLabel(c)),
-                                selected: selected?.seId == c.seId &&
-                                    selected?.slotId == c.slotId &&
-                                    selected?.portId == c.portId,
-                                onSelected: (_) {
-                                  ref
-                                      .read(selectedChannelKeyProvider.notifier)
-                                      .state = c.key;
-                                },
-                                avatar: Icon(
-                                  c.type.toLowerCase() == 'usb'
-                                      ? Icons.usb
-                                      : Icons.sim_card_outlined,
-                                  size: 16,
-                                  color: scheme.primary,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ],
+                      ),
                     );
                   },
-                  loading: () => const LinearProgressIndicator(),
-                  error: (e, _) => Text(context.l10n.channelError('$e')),
-                ),
-              ),
-            ),
-            profilesAsync.when(
-              skipLoadingOnRefresh: false,
-              skipLoadingOnReload: false,
-              data: (profiles) {
-                if (profiles.isEmpty) {
-                  return SliverFillRemaining(
+                  loading: () => const SliverFillRemaining(
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                  error: (error, _) => SliverFillRemaining(
                     hasScrollBody: false,
                     child: Padding(
                       padding: const EdgeInsets.all(24),
                       child: _EmptyCard(
-                        icon: '📭',
-                        title: context.l10n.noProfilesYet,
-                        body: context.l10n.noProfilesDescription,
-                        actionLabel: context.l10n.newEsim,
-                        onAction: () =>
-                            _openDownloadForCurrentChannel(context, ref),
+                        icon: '🔄',
+                        title: error is PlatformException &&
+                                error.code == 'euicc_channel_unavailable'
+                            ? context.l10n.channelReconnectingTitle
+                            : context.l10n.profilesUnavailableTitle,
+                        body: error is PlatformException &&
+                                error.code == 'euicc_channel_unavailable'
+                            ? context.l10n.channelReconnectingDescription
+                            : context.l10n.profilesUnavailableDescription,
+                        actionLabel: context.l10n.retry,
+                        onAction: _refresh,
                       ),
                     ),
-                  );
-                }
-                return SliverPadding(
-                  padding: const EdgeInsets.only(bottom: 96, top: 8),
-                  sliver: SliverList.builder(
-                    itemCount: profiles.length,
-                    itemBuilder: (context, index) {
-                      final p = profiles[index];
-                      final reminderAsync =
-                          ref.watch(profileReminderProvider(p.iccid));
-                      final reminder = reminderAsync.valueOrNull;
-                      return ProfileCard(
-                        profile: p,
-                        reminder: reminder,
-                        reminderLoading: reminderAsync.isLoading,
-                        onEnable: selected == null
-                            ? null
-                            : () => _switch(ref, selected, p, true),
-                        onDisable: selected == null
-                            ? null
-                            : () => _switch(ref, selected, p, false),
-                        onDelete: selected == null
-                            ? null
-                            : () => _delete(
-                                  context,
-                                  ref,
-                                  selected,
-                                  p,
-                                ),
-                        onRename: selected == null
-                            ? null
-                            : () => _rename(
-                                  context,
-                                  ref,
-                                  selected,
-                                  p,
-                                ),
-                        onSetReminder: reminderAsync.isLoading
-                            ? null
-                            : () => _setReminder(
-                                  context,
-                                  ref,
-                                  p,
-                                  reminder,
-                                ),
-                        onCancelReminder: reminder == null
-                            ? null
-                            : () => _cancelReminder(context, ref, p),
-                        onMicroDataKeepAlive:
-                            selected?.type.toLowerCase() == 'omapi'
-                                ? () => _runMicroDataKeepAlive(
-                                      context,
-                                      ref,
-                                      selected!,
-                                      p,
-                                    )
-                                : null,
-                      );
-                    },
-                  ),
-                );
-              },
-              loading: () => const SliverFillRemaining(
-                child: Center(child: CircularProgressIndicator()),
-              ),
-              error: (error, _) => SliverFillRemaining(
-                hasScrollBody: false,
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: _EmptyCard(
-                    icon: '🔄',
-                    title: error is PlatformException &&
-                            error.code == 'euicc_channel_unavailable'
-                        ? context.l10n.channelReconnectingTitle
-                        : context.l10n.profilesUnavailableTitle,
-                    body: error is PlatformException &&
-                            error.code == 'euicc_channel_unavailable'
-                        ? context.l10n.channelReconnectingDescription
-                        : context.l10n.profilesUnavailableDescription,
-                    actionLabel: context.l10n.retry,
-                    onAction: () {
-                      ref.invalidate(channelsProvider);
-                      ref.invalidate(profilesProvider);
-                    },
                   ),
                 ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  Future<void> _refresh() async {
+    ref.invalidate(channelsProvider);
+    ref.invalidate(profilesProvider);
+    ref.invalidate(euiccInfoProvider);
+    try {
+      await ref.read(profilesProvider.future);
+    } catch (_) {
+      // The page renders the actionable provider error state.
+    }
   }
 
   Future<void> _openDownloadForCurrentChannel(
@@ -307,20 +314,89 @@ class HomePage extends ConsumerWidget {
   }
 
   Future<void> _switch(
-    WidgetRef ref,
     EuiccChannelInfo channel,
     EuiccProfile profile,
     bool enable,
   ) async {
+    if (_switchingIccid != null) return;
+    setState(() => _switchingIccid = profile.iccid);
     final bridge = ref.read(euiccBridgeProvider);
-    await bridge.switchProfile(
-      slotId: channel.slotId,
-      portId: channel.portId,
-      seId: channel.seId,
-      iccid: profile.iccid,
-      enable: enable,
-    );
-    ref.invalidate(profilesProvider);
+    try {
+      await bridge.switchProfile(
+        slotId: channel.slotId,
+        portId: channel.portId,
+        seId: channel.seId,
+        iccid: profile.iccid,
+        enable: enable,
+      );
+    } catch (error) {
+      debugPrint(
+        '[LuminaProfile] switch_failed '
+        'errorType=${error.runtimeType} slot=${channel.slotId} '
+        'port=${channel.portId}',
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(content: Text(context.l10n.profileSwitchFailed)),
+          );
+      }
+    } finally {
+      ref.invalidate(channelsProvider);
+      ref.invalidate(profilesProvider);
+      ref.invalidate(euiccInfoProvider);
+      if (mounted) setState(() => _switchingIccid = null);
+    }
+  }
+
+  Future<void> _showNotifications(
+    BuildContext context,
+    WidgetRef ref,
+    EuiccChannelInfo channel,
+  ) async {
+    try {
+      final list = await ref.read(euiccBridgeProvider).listNotifications(
+            slotId: channel.slotId,
+            portId: channel.portId,
+            seId: channel.seId,
+          );
+      if (!context.mounted) return;
+      await showModalBottomSheet<void>(
+        context: context,
+        showDragHandle: true,
+        builder: (context) {
+          if (list.isEmpty) {
+            return Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text(context.l10n.noPendingNotifications),
+            );
+          }
+          return ListView.builder(
+            itemCount: list.length,
+            itemBuilder: (context, index) {
+              final notification = list[index];
+              return ListTile(
+                title: Text(
+                  notification['title']?.toString() ??
+                      context.l10n.notification,
+                ),
+                subtitle: Text(notification['detail']?.toString() ?? ''),
+              );
+            },
+          );
+        },
+      );
+    } catch (error) {
+      debugPrint(
+        '[LuminaNotifications] list_failed errorType=${error.runtimeType}',
+      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.profilesUnavailableDescription)),
+        );
+      }
+    }
   }
 
   Future<void> _runMicroDataKeepAlive(
@@ -704,6 +780,455 @@ class HomePage extends ConsumerWidget {
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
   }
+}
+
+class _DashboardHeader extends StatelessWidget {
+  const _DashboardHeader({
+    required this.onCompatibility,
+    required this.onRefresh,
+    required this.onSettings,
+  });
+
+  final VoidCallback onCompatibility;
+  final Future<void> Function() onRefresh;
+  final VoidCallback onSettings;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return SizedBox(
+      height: 48,
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: const Color(0xFF173F3A),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.sim_card_outlined,
+              color: Colors.white,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.l10n.appTitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.45,
+                        height: 1.05,
+                      ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  context.l10n.dashboardSubtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ],
+            ),
+          ),
+          _HeaderAction(
+            tooltip: context.l10n.compatibility,
+            icon: Icons.verified_user_outlined,
+            onPressed: onCompatibility,
+          ),
+          _HeaderAction(
+            tooltip: context.l10n.refresh,
+            icon: Icons.refresh_rounded,
+            onPressed: onRefresh,
+          ),
+          _HeaderAction(
+            tooltip: context.l10n.settings,
+            icon: Icons.settings_outlined,
+            onPressed: onSettings,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeaderAction extends StatelessWidget {
+  const _HeaderAction({
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+        tooltip: tooltip,
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints.tightFor(width: 38, height: 38),
+        visualDensity: VisualDensity.compact,
+        onPressed: onPressed,
+        icon: Icon(icon, size: 22),
+      );
+}
+
+class _ChannelSwitcher extends StatelessWidget {
+  const _ChannelSwitcher({
+    required this.channels,
+    required this.selected,
+    required this.selectedProfileCount,
+    required this.onSelected,
+  });
+
+  final List<EuiccChannelInfo> channels;
+  final EuiccChannelInfo? selected;
+  final int selectedProfileCount;
+  final ValueChanged<EuiccChannelInfo> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = [
+      for (final channel in channels)
+        _ChannelSegment(
+          key: ValueKey(
+            'channel-segment-${channel.slotId}-${channel.portId}-${channel.seId}',
+          ),
+          channel: channel,
+          selected: channel.key == selected?.key,
+          detail: channel.key == selected?.key
+              ? context.l10n.profileCount(selectedProfileCount)
+              : channel.type.toUpperCase(),
+          onTap: () => onSelected(channel),
+        ),
+    ];
+
+    return Container(
+      height: 45,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: channels.length <= 2
+          ? Row(
+              children: [for (final item in items) Expanded(child: item)],
+            )
+          : ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: items.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 4),
+              itemBuilder: (_, index) => SizedBox(
+                width: 150,
+                child: items[index],
+              ),
+            ),
+    );
+  }
+}
+
+class _ChannelSegment extends StatelessWidget {
+  const _ChannelSegment({
+    super.key,
+    required this.channel,
+    required this.selected,
+    required this.detail,
+    required this.onTap,
+  });
+
+  final EuiccChannelInfo channel;
+  final bool selected;
+  final String detail;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isUsb = channel.type.toLowerCase() == 'usb';
+    final label = isUsb ? 'USB' : 'SIM ${channel.slotId + 1}';
+    return Semantics(
+      label: context.l10n.euiccChannelLabel(channel),
+      selected: selected,
+      button: true,
+      child: Material(
+        color: selected ? scheme.surface : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        elevation: selected ? 1 : 0,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onTap,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                isUsb ? Icons.usb_rounded : Icons.sim_card_outlined,
+                size: 16,
+                color: selected ? scheme.primary : scheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 5),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color:
+                            selected ? scheme.primary : scheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w800,
+                      ),
+                ),
+              ),
+              const SizedBox(width: 5),
+              Flexible(
+                child: Text(
+                  detail,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EuiccIdentityStrip extends StatelessWidget {
+  const _EuiccIdentityStrip({
+    required this.info,
+    required this.infoLoading,
+    required this.onNotifications,
+    required this.onAdd,
+  });
+
+  final EuiccInfo? info;
+  final bool infoLoading;
+  final VoidCallback? onNotifications;
+  final VoidCallback onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    final eid = info?.eid.trim() ?? '';
+    final freeMemory = info?.freeNonVolatileMemory ?? 0;
+    final eidLabel = eid.isEmpty ? context.l10n.eidUnavailable : _maskEid(eid);
+    final memoryLabel = freeMemory > 0
+        ? context.l10n.freeMemory(_formatStorage(freeMemory))
+        : context.l10n.freeMemoryUnknown;
+
+    return SizedBox(
+      height: 73,
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(13, 9, 12, 9),
+              decoration: BoxDecoration(
+                color: const Color(0xFF173F3A),
+                borderRadius: BorderRadius.circular(17),
+              ),
+              child: infoLoading
+                  ? const Center(
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Color(0xFF8FD8CC),
+                        ),
+                      ),
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.fingerprint_rounded,
+                              color: Color(0xFF8FD8CC),
+                              size: 17,
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                eidLabel,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .labelMedium
+                                    ?.copyWith(
+                                      color: Colors.white,
+                                      fontFamily: 'monospace',
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 7),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.storage_rounded,
+                              color: Color(0xFF8FD8CC),
+                              size: 16,
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                memoryLabel,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .labelSmall
+                                    ?.copyWith(
+                                      color: const Color(0xFFD7ECE8),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          _DashboardSquareAction(
+            tooltip: context.l10n.notifications,
+            icon: Icons.notifications_none_rounded,
+            onPressed: onNotifications,
+          ),
+          const SizedBox(width: 8),
+          _DashboardSquareAction(
+            key: const Key('newEsimButton'),
+            tooltip: context.l10n.newEsim,
+            icon: Icons.add_rounded,
+            emphasized: true,
+            onPressed: onAdd,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DashboardSquareAction extends StatelessWidget {
+  const _DashboardSquareAction({
+    super.key,
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+    this.emphasized = false,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback? onPressed;
+  final bool emphasized;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: emphasized ? scheme.primary : scheme.surfaceContainerLowest,
+      borderRadius: BorderRadius.circular(17),
+      elevation: emphasized ? 1 : 0,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(17),
+        onTap: onPressed,
+        child: Tooltip(
+          message: tooltip,
+          child: SizedBox(
+            width: 54,
+            height: 73,
+            child: Icon(
+              icon,
+              color: emphasized ? scheme.onPrimary : scheme.onSurface,
+              size: 25,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfilesSectionHeader extends StatelessWidget {
+  const _ProfilesSectionHeader({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        Text(
+          context.l10n.profilesSectionTitle,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.2,
+              ),
+        ),
+        const SizedBox(width: 7),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+          decoration: BoxDecoration(
+            color: scheme.primaryContainer,
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Text(
+            '$count',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: scheme.primary,
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+        ),
+        const Spacer(),
+        Icon(Icons.alarm_outlined, size: 15, color: scheme.onSurfaceVariant),
+        const SizedBox(width: 4),
+        Text(
+          context.l10n.localReminders,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
+        ),
+      ],
+    );
+  }
+}
+
+String _maskEid(String eid) {
+  if (eid.length <= 12) return eid;
+  return '${eid.substring(0, 8)}••••••${eid.substring(eid.length - 6)}';
+}
+
+String _formatStorage(int bytes) {
+  if (bytes >= 1024) return '${(bytes / 1024).toStringAsFixed(2)} KiB';
+  return '$bytes B';
 }
 
 class _MicroDataProgressDialog extends StatefulWidget {

@@ -8,6 +8,11 @@ class FakeEuiccBridge extends EuiccBridge {
   List<EuiccChannelInfo> channels = const [];
   List<EuiccProfile> profiles = const [];
   List<CompatibilityItem> compatibilityItems = const [];
+  Map<String, dynamic> euiccInfo = const {
+    'eid': '89086030000000000000000000000001',
+    'freeNonVolatileMemory': 158240,
+    'freeVolatileMemory': 4096,
+  };
   int downloadCalls = 0;
   int cancelDownloadCalls = 0;
   int confirmDownloadCalls = 0;
@@ -17,6 +22,7 @@ class FakeEuiccBridge extends EuiccBridge {
   int cancelReminderCalls = 0;
   int requestPhoneStatePermissionCalls = 0;
   int microDataKeepAliveCalls = 0;
+  int switchProfileCalls = 0;
   bool reminderNotificationPermissionGranted = true;
   bool reminderExact = true;
   bool phoneStatePermissionGranted = true;
@@ -29,6 +35,15 @@ class FakeEuiccBridge extends EuiccBridge {
     responseBodyBytes: 0,
   );
   Future<MicroDataKeepAliveResult>? microDataKeepAliveFuture;
+  Future<void>? switchProfileFuture;
+  Object? switchProfileError;
+  ({
+    int slotId,
+    int portId,
+    String seId,
+    String iccid,
+    bool enable
+  })? lastProfileSwitch;
   ({int slotId, int portId, String seId})? lastMicroDataChannel;
   final Map<String, ProfileReminder> reminders = {};
   bool openSimToolkitResult = true;
@@ -142,6 +157,14 @@ class FakeEuiccBridge extends EuiccBridge {
       compatibilityItems;
 
   @override
+  Future<Map<String, dynamic>> getEuiccInfo({
+    required int slotId,
+    required int portId,
+    required String seId,
+  }) async =>
+      euiccInfo;
+
+  @override
   Future<List<EuiccProfile>> listProfiles({
     required int slotId,
     required int portId,
@@ -153,6 +176,27 @@ class FakeEuiccBridge extends EuiccBridge {
       return handler(slotId: slotId, portId: portId, seId: seId);
     }
     return profiles;
+  }
+
+  @override
+  Future<void> switchProfile({
+    required int slotId,
+    required int portId,
+    required String seId,
+    required String iccid,
+    required bool enable,
+  }) async {
+    switchProfileCalls++;
+    lastProfileSwitch = (
+      slotId: slotId,
+      portId: portId,
+      seId: seId,
+      iccid: iccid,
+      enable: enable,
+    );
+    final error = switchProfileError;
+    if (error != null) throw error;
+    await switchProfileFuture;
   }
 
   @override

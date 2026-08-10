@@ -81,11 +81,11 @@ void main() {
     await tester.pump();
 
     expect(
-      find.text('USB reader · slot 1 · port 0 · SE 2'),
+      find.byKey(const Key('channel-segment-1-0-2')),
       findsOneWidget,
     );
     expect(find.text('Profile A'), findsNothing);
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsWidgets);
 
     refreshedProfiles.complete(const [profileB]);
     await tester.pumpAndSettle();
@@ -208,15 +208,82 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('giffgaff'), findsWidgets);
 
-    final fab = tester.widget<FloatingActionButton>(
-      find.byKey(const Key('newEsimButton')),
-    );
-    expect(fab.onPressed, isNotNull);
+    expect(find.byKey(const Key('newEsimButton')), findsOneWidget);
     await tester.tap(find.byKey(const Key('newEsimButton')));
     await tester.pumpAndSettle();
 
     final page = tester.widget<DownloadPage>(find.byType(DownloadPage));
     expect(page.channel.key, channel.key);
+  });
+
+  testWidgets('production home uses the approved dense dashboard hierarchy',
+      (tester) async {
+    const channel = EuiccChannelInfo(
+      slotId: 0,
+      portId: 0,
+      seId: '0',
+      label: 'Phone slot 0',
+      type: 'omapi',
+    );
+    final bridge = FakeEuiccBridge()
+      ..channels = const [channel]
+      ..profiles = const [_profile];
+    addTearDown(bridge.dispose);
+
+    await _pumpHome(tester, bridge);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Digital eSIM passport'), findsOneWidget);
+    expect(find.byKey(const Key('channel-segment-0-0-0')), findsOneWidget);
+    expect(find.text('1 profiles'), findsOneWidget);
+    expect(find.text('89086030••••••000001'), findsOneWidget);
+    expect(find.text('154.53 KiB free'), findsOneWidget);
+    expect(find.text('Profiles'), findsOneWidget);
+    expect(find.text('🇬🇧'), findsOneWidget);
+    expect(find.text('Size unknown'), findsOneWidget);
+    expect(find.byType(FloatingActionButton), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('direct profile toggle is single-flight and targets the channel',
+      (tester) async {
+    const channel = EuiccChannelInfo(
+      slotId: 1,
+      portId: 2,
+      seId: '3',
+      label: 'Phone slot 1',
+      type: 'omapi',
+    );
+    final switching = Completer<void>();
+    final bridge = FakeEuiccBridge()
+      ..channels = const [channel]
+      ..profiles = const [_profile]
+      ..switchProfileFuture = switching.future;
+    addTearDown(bridge.dispose);
+
+    await _pumpHome(tester, bridge);
+    await tester.pumpAndSettle();
+    final toggle = find.byKey(const ValueKey('profile-toggle-1'));
+    await tester.tap(toggle);
+    await tester.pump();
+    await tester.tap(toggle);
+    await tester.pump();
+
+    expect(bridge.switchProfileCalls, 1);
+    expect(
+      bridge.lastProfileSwitch,
+      (
+        slotId: 1,
+        portId: 2,
+        seId: '3',
+        iccid: _profile.iccid,
+        enable: true,
+      ),
+    );
+
+    switching.complete();
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('a profile keep-alive reminder reaches the native scheduler',
@@ -410,7 +477,7 @@ void main() {
 
     await _pumpHome(tester, bridge);
     await tester.pumpAndSettle();
-    await tester.tap(find.byType(ChoiceChip).at(1));
+    await tester.tap(find.byKey(const Key('channel-segment-1-2-second')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('newEsimButton')));
     await tester.pumpAndSettle();

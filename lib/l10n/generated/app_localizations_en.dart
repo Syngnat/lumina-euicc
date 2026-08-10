@@ -78,6 +78,52 @@ class AppLocalizationsEn extends AppLocalizations {
   String get channels => 'Channels';
 
   @override
+  String get dashboardSubtitle => 'Digital eSIM passport';
+
+  @override
+  String get profilesSectionTitle => 'Profiles';
+
+  @override
+  String profileCount(int count) {
+    return '$count profiles';
+  }
+
+  @override
+  String get localReminders => 'Local reminders';
+
+  @override
+  String get eidUnavailable => 'EID unavailable';
+
+  @override
+  String freeMemory(String size) {
+    return '$size free';
+  }
+
+  @override
+  String get freeMemoryUnknown => 'Free space unknown';
+
+  @override
+  String get profileSizeUnknown => 'Size unknown';
+
+  @override
+  String get reminderUnset => 'No reminder';
+
+  @override
+  String get reminderExpired => 'Expired';
+
+  @override
+  String reminderDaysRemaining(int days) {
+    return '${days}d';
+  }
+
+  @override
+  String get profileSwitchFailed =>
+      'Could not switch the profile. Refresh and try again.';
+
+  @override
+  String get profileActions => 'Profile actions';
+
+  @override
   String channelError(String error) {
     return 'Channel error: $error';
   }

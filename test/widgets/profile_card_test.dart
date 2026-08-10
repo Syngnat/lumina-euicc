@@ -104,15 +104,21 @@ void main() {
     final badge = tester.widget<SizedBox>(
       find.byKey(const ValueKey('profile-region-badge')),
     );
-    expect(badge.width, 34);
-    expect(badge.height, 34);
+    expect(badge.width, 42);
+    expect(badge.height, 30);
     expect(find.text('🇬🇧'), findsOneWidget);
-    expect(find.text('英国'), findsOneWidget);
+    expect(find.text('英国'), findsNothing);
     expect(find.text('giffgaff UK'), findsOneWidget);
     expect(find.text('giffgaff'), findsOneWidget);
     expect(find.text('已启用'), findsOneWidget);
-    expect(find.text('8944101234567890123'), findsOneWidget);
-    expect(find.text('#3 · 正式'), findsOneWidget);
+    expect(find.text('8944101••••••0123'), findsOneWidget);
+    expect(find.text('大小未知'), findsOneWidget);
+    expect(
+      tester
+          .getSemantics(find.byKey(const ValueKey('profile-region-badge')))
+          .label,
+      contains('英国'),
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -131,9 +137,15 @@ void main() {
     );
 
     expect(find.text('🌐'), findsOneWidget);
-    expect(find.text('Region unknown'), findsOneWidget);
+    expect(find.text('Region unknown'), findsNothing);
     expect(find.text('Global'), findsNothing);
     expect(find.text('Disabled'), findsOneWidget);
+    expect(
+      tester
+          .getSemantics(find.byKey(const ValueKey('profile-region-badge')))
+          .label,
+      contains('Region unknown'),
+    );
   });
 
   testWidgets('shows an ICCID issuer-country fallback when metadata is vague',
@@ -152,8 +164,14 @@ void main() {
     );
 
     expect(find.text('🇨🇳'), findsOneWidget);
-    expect(find.text('发卡地区 CN'), findsOneWidget);
+    expect(find.text('发卡地区 CN'), findsNothing);
     expect(find.text('地区未知'), findsNothing);
+    expect(
+      tester
+          .getSemantics(find.byKey(const ValueKey('profile-region-badge')))
+          .label,
+      contains('发卡地区 CN'),
+    );
   });
 
   testWidgets('stays overflow-free at a 1.3 text scale', (tester) async {
@@ -254,7 +272,7 @@ void main() {
         null,
       ),
     );
-    await tester.longPress(find.text(iccid));
+    await tester.longPress(find.text('8901000••••••0001'));
     await tester.pumpAndSettle();
     final iccidSemantics = tester.getSemantics(
       find.byKey(const ValueKey('profile-iccid')),

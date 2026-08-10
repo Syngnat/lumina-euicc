@@ -1113,6 +1113,8 @@ class EuiccBridgePlugin :
                 "eid" to (ch.lpa.eID ?: ""),
                 "valid" to ch.lpa.valid,
                 "euiccInfo2" to (info2?.toString() ?: ""),
+                "freeNonVolatileMemory" to (info2?.freeNvram ?: 0),
+                "freeVolatileMemory" to (info2?.freeRam ?: 0),
                 "mock" to false,
             )
         }

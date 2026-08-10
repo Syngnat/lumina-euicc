@@ -24,6 +24,25 @@ class EuiccChannelInfo {
   }
 }
 
+class EuiccInfo {
+  const EuiccInfo({
+    required this.eid,
+    required this.freeNonVolatileMemory,
+    required this.freeVolatileMemory,
+  });
+
+  final String eid;
+  final int freeNonVolatileMemory;
+  final int freeVolatileMemory;
+
+  factory EuiccInfo.fromMap(Map<dynamic, dynamic> map) => EuiccInfo(
+        eid: map['eid']?.toString() ?? '',
+        freeNonVolatileMemory:
+            (map['freeNonVolatileMemory'] as num?)?.toInt() ?? 0,
+        freeVolatileMemory: (map['freeVolatileMemory'] as num?)?.toInt() ?? 0,
+      );
+}
+
 class EuiccProfile {
   const EuiccProfile({
     required this.iccid,
