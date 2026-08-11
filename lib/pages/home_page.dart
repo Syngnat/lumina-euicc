@@ -27,6 +27,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     final profilesAsync = ref.watch(profilesProvider);
     final selected = ref.watch(selectedChannelProvider);
     final euiccInfoAsync = ref.watch(euiccInfoProvider);
+    final sizeEstimator = ref.watch(profileSizeEstimatorProvider).valueOrNull;
     final profileCount = profilesAsync.valueOrNull?.length ?? 0;
 
     return Scaffold(
@@ -78,9 +79,13 @@ class _HomePageState extends ConsumerState<HomePage> {
                       _EuiccIdentityStrip(
                         info: euiccInfoAsync.valueOrNull,
                         infoLoading: euiccInfoAsync.isLoading,
-                        onNotifications: selected == null
+                        onReminders: selected == null
                             ? null
-                            : () => _showNotifications(context, ref, selected),
+                            : () => _showReminders(
+                                  context,
+                                  ref,
+                                  profilesAsync.valueOrNull ?? const [],
+                                ),
                         onAdd: () =>
                             _openDownloadForCurrentChannel(context, ref),
                       ),
@@ -148,6 +153,11 @@ class _HomePageState extends ConsumerState<HomePage> {
                             child: ProfileCard(
                               profile: p,
                               reminder: reminder,
+                              estimatedSizeBytes: sizeEstimator?.estimateBytes(
+                                provider: p.provider,
+                                profileName: p.name,
+                                eid: euiccInfoAsync.valueOrNull?.eid ?? '',
+                              ),
                               reminderLoading: reminderAsync.isLoading,
                               isSwitching: _switchingIccid == p.iccid,
                               switchLocked: _switchingIccid != null,
@@ -350,50 +360,84 @@ class _HomePageState extends ConsumerState<HomePage> {
     }
   }
 
-  Future<void> _showNotifications(
+  Future<void> _showReminders(
     BuildContext context,
     WidgetRef ref,
-    EuiccChannelInfo channel,
+    List<EuiccProfile> profiles,
   ) async {
     try {
-      final list = await ref.read(euiccBridgeProvider).listNotifications(
-            slotId: channel.slotId,
-            portId: channel.portId,
-            seId: channel.seId,
-          );
+      final reminders = <({EuiccProfile profile, ProfileReminder reminder})>[];
+      for (final profile in profiles) {
+        final reminder = await ref.read(
+          profileReminderProvider(profile.iccid).future,
+        );
+        if (reminder != null) {
+          reminders.add((profile: profile, reminder: reminder));
+        }
+      }
+      reminders.sort((a, b) => a.reminder.at.compareTo(b.reminder.at));
       if (!context.mounted) return;
       await showModalBottomSheet<void>(
         context: context,
         showDragHandle: true,
         builder: (context) {
-          if (list.isEmpty) {
-            return Padding(
-              padding: const EdgeInsets.all(24),
-              child: Text(context.l10n.noPendingNotifications),
-            );
-          }
-          return ListView.builder(
-            itemCount: list.length,
-            itemBuilder: (context, index) {
-              final notification = list[index];
-              return ListTile(
-                title: Text(
-                  notification['title']?.toString() ??
-                      context.l10n.notification,
-                ),
-                subtitle: Text(notification['detail']?.toString() ?? ''),
-              );
-            },
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    context.l10n.keepAliveReminderCenterTitle,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                  ),
+                  const SizedBox(height: 12),
+                  if (reminders.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      child: Text(context.l10n.noKeepAliveReminders),
+                    )
+                  else
+                    Flexible(
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: reminders.length,
+                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        itemBuilder: (context, index) {
+                          final item = reminders[index];
+                          final date = MaterialLocalizations.of(context)
+                              .formatMediumDate(item.reminder.at);
+                          final time =
+                              MaterialLocalizations.of(context).formatTimeOfDay(
+                            TimeOfDay.fromDateTime(item.reminder.at),
+                          );
+                          return ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: const Icon(Icons.alarm_rounded),
+                            title: Text(item.profile.name),
+                            subtitle: Text(
+                              context.l10n.reminderScheduledAt(date, time),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            ),
           );
         },
       );
     } catch (error) {
       debugPrint(
-        '[LuminaNotifications] list_failed errorType=${error.runtimeType}',
+        '[LuminaReminders] list_failed errorType=${error.runtimeType}',
       );
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.l10n.profilesUnavailableDescription)),
+          SnackBar(content: Text(context.l10n.reminderScheduleFailed)),
         );
       }
     }
@@ -1015,13 +1059,13 @@ class _EuiccIdentityStrip extends StatelessWidget {
   const _EuiccIdentityStrip({
     required this.info,
     required this.infoLoading,
-    required this.onNotifications,
+    required this.onReminders,
     required this.onAdd,
   });
 
   final EuiccInfo? info;
   final bool infoLoading;
-  final VoidCallback? onNotifications;
+  final VoidCallback? onReminders;
   final VoidCallback onAdd;
 
   @override
@@ -1115,9 +1159,10 @@ class _EuiccIdentityStrip extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           _DashboardSquareAction(
-            tooltip: context.l10n.notifications,
+            key: const Key('keepAliveRemindersButton'),
+            tooltip: context.l10n.localReminders,
             icon: Icons.notifications_none_rounded,
-            onPressed: onNotifications,
+            onPressed: onReminders,
           ),
           const SizedBox(width: 8),
           _DashboardSquareAction(

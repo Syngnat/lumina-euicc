@@ -21,6 +21,7 @@ class ProfileCard extends StatelessWidget {
     this.onMicroDataKeepAlive,
     this.isSwitching = false,
     this.switchLocked = false,
+    this.estimatedSizeBytes,
   });
 
   final EuiccProfile profile;
@@ -35,6 +36,7 @@ class ProfileCard extends StatelessWidget {
   final VoidCallback? onMicroDataKeepAlive;
   final bool isSwitching;
   final bool switchLocked;
+  final int? estimatedSizeBytes;
 
   @override
   Widget build(BuildContext context) {
@@ -88,6 +90,7 @@ class ProfileCard extends StatelessWidget {
               child: _ProfileIdentity(
                 profile: profile,
                 reminder: reminder,
+                estimatedSizeBytes: estimatedSizeBytes,
                 onCopyIccid: () => _copyIccid(context),
               ),
             ),
@@ -175,11 +178,13 @@ class _ProfileIdentity extends StatelessWidget {
   const _ProfileIdentity({
     required this.profile,
     required this.reminder,
+    required this.estimatedSizeBytes,
     required this.onCopyIccid,
   });
 
   final EuiccProfile profile;
   final ProfileReminder? reminder;
+  final int? estimatedSizeBytes;
   final VoidCallback onCopyIccid;
 
   @override
@@ -240,16 +245,25 @@ class _ProfileIdentity extends StatelessWidget {
         Row(
           children: [
             Flexible(child: _ReminderChip(reminder: reminder)),
-            const SizedBox(width: 5),
-            _MetadataChip(
-              icon: Icons.storage_rounded,
-              label: context.l10n.profileSizeUnknown,
-            ),
+            if (estimatedSizeBytes case final bytes?) ...[
+              const SizedBox(width: 5),
+              _MetadataChip(
+                icon: Icons.storage_rounded,
+                label: context.l10n.profileSizeEstimate(
+                  _formatEstimatedProfileSize(bytes),
+                ),
+              ),
+            ],
           ],
         ),
       ],
     );
   }
+}
+
+String _formatEstimatedProfileSize(int bytes) {
+  if (bytes >= 1024) return '${(bytes / 1024).toStringAsFixed(1)} KiB';
+  return '$bytes B';
 }
 
 class _ProfileControls extends StatelessWidget {

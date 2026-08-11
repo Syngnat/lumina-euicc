@@ -103,7 +103,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get freeMemoryUnknown => 'Free space unknown';
 
   @override
-  String get profileSizeUnknown => 'Size unknown';
+  String profileSizeEstimate(String size) {
+    return 'Est. $size';
+  }
 
   @override
   String get reminderUnset => 'No reminder';
@@ -417,16 +419,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get memoryResetRequested => 'Memory reset requested';
 
   @override
-  String get notifications => 'Notifications';
+  String get euiccPendingReports => 'eUICC pending reports';
 
   @override
-  String get notificationsDescription => 'List pending eUICC notifications';
+  String get euiccPendingReportsDescription =>
+      'Technical card-side events waiting to be reported after profile operations; these are not keep-alive reminders or reminder history.';
 
   @override
-  String get noPendingNotifications => 'No pending notifications';
+  String get noPendingEuiccReports =>
+      'No card-side events are waiting to be reported';
 
   @override
-  String get notification => 'Notification';
+  String get euiccPendingReport => 'Pending eUICC report';
 
   @override
   String compatibilityError(String error) {
@@ -658,6 +662,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get keepAliveReminder => 'Keep-alive reminder';
 
   @override
+  String get keepAliveReminderCenterTitle => 'Keep-alive reminders';
+
+  @override
+  String get noKeepAliveReminders => 'No keep-alive reminders for this channel';
+
+  @override
   String get editKeepAliveReminder => 'Edit reminder';
 
   @override
@@ -678,7 +688,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reminderMustBeFuture => 'Choose a future date and time.';
 
   @override
-  String get reminderSaved => 'Keep-alive reminder saved';
+  String get reminderSaved => 'Keep-alive alarm scheduled';
 
   @override
   String get reminderCancelled => 'Keep-alive reminder cancelled';

@@ -266,11 +266,11 @@ abstract class AppLocalizations {
   /// **'Free space unknown'**
   String get freeMemoryUnknown;
 
-  /// No description provided for @profileSizeUnknown.
+  /// No description provided for @profileSizeEstimate.
   ///
   /// In en, this message translates to:
-  /// **'Size unknown'**
-  String get profileSizeUnknown;
+  /// **'Est. {size}'**
+  String profileSizeEstimate(String size);
 
   /// No description provided for @reminderUnset.
   ///
@@ -758,29 +758,29 @@ abstract class AppLocalizations {
   /// **'Memory reset requested'**
   String get memoryResetRequested;
 
-  /// No description provided for @notifications.
+  /// No description provided for @euiccPendingReports.
   ///
   /// In en, this message translates to:
-  /// **'Notifications'**
-  String get notifications;
+  /// **'eUICC pending reports'**
+  String get euiccPendingReports;
 
-  /// No description provided for @notificationsDescription.
+  /// No description provided for @euiccPendingReportsDescription.
   ///
   /// In en, this message translates to:
-  /// **'List pending eUICC notifications'**
-  String get notificationsDescription;
+  /// **'Technical card-side events waiting to be reported after profile operations; these are not keep-alive reminders or reminder history.'**
+  String get euiccPendingReportsDescription;
 
-  /// No description provided for @noPendingNotifications.
+  /// No description provided for @noPendingEuiccReports.
   ///
   /// In en, this message translates to:
-  /// **'No pending notifications'**
-  String get noPendingNotifications;
+  /// **'No card-side events are waiting to be reported'**
+  String get noPendingEuiccReports;
 
-  /// No description provided for @notification.
+  /// No description provided for @euiccPendingReport.
   ///
   /// In en, this message translates to:
-  /// **'Notification'**
-  String get notification;
+  /// **'Pending eUICC report'**
+  String get euiccPendingReport;
 
   /// No description provided for @compatibilityError.
   ///
@@ -1131,6 +1131,18 @@ abstract class AppLocalizations {
   /// **'Keep-alive reminder'**
   String get keepAliveReminder;
 
+  /// No description provided for @keepAliveReminderCenterTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep-alive reminders'**
+  String get keepAliveReminderCenterTitle;
+
+  /// No description provided for @noKeepAliveReminders.
+  ///
+  /// In en, this message translates to:
+  /// **'No keep-alive reminders for this channel'**
+  String get noKeepAliveReminders;
+
   /// No description provided for @editKeepAliveReminder.
   ///
   /// In en, this message translates to:
@@ -1170,7 +1182,7 @@ abstract class AppLocalizations {
   /// No description provided for @reminderSaved.
   ///
   /// In en, this message translates to:
-  /// **'Keep-alive reminder saved'**
+  /// **'Keep-alive alarm scheduled'**
   String get reminderSaved;
 
   /// No description provided for @reminderCancelled.

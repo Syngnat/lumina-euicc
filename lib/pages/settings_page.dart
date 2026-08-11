@@ -107,8 +107,8 @@ class SettingsPage extends ConsumerWidget {
                   },
           ),
           ListTile(
-            title: Text(context.l10n.notifications),
-            subtitle: Text(context.l10n.notificationsDescription),
+            title: Text(context.l10n.euiccPendingReports),
+            subtitle: Text(context.l10n.euiccPendingReportsDescription),
             enabled: channel != null,
             onTap: channel == null
                 ? null
@@ -127,7 +127,7 @@ class SettingsPage extends ConsumerWidget {
                         if (list.isEmpty) {
                           return Padding(
                             padding: const EdgeInsets.all(24),
-                            child: Text(context.l10n.noPendingNotifications),
+                            child: Text(context.l10n.noPendingEuiccReports),
                           );
                         }
                         return ListView.builder(
@@ -137,7 +137,7 @@ class SettingsPage extends ConsumerWidget {
                             return ListTile(
                               title: Text(
                                 n['title']?.toString() ??
-                                    context.l10n.notification,
+                                    context.l10n.euiccPendingReport,
                               ),
                               subtitle: Text(n['detail']?.toString() ?? ''),
                             );

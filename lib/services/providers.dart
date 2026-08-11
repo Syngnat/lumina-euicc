@@ -5,12 +5,17 @@ import '../models/euicc_models.dart';
 import '../models/profile_reminder.dart';
 import 'app_update_service.dart';
 import 'euicc_bridge.dart';
+import 'profile_size_estimator.dart';
 
 final euiccBridgeProvider = Provider<EuiccBridge>((ref) => EuiccBridge());
 
 final appUpdateServiceProvider = Provider<AppUpdateService>((ref) {
   return GitHubAppUpdateService(bridge: ref.watch(euiccBridgeProvider));
 });
+
+final profileSizeEstimatorProvider = FutureProvider<ProfileSizeEstimator>(
+  (ref) => ProfileSizeEstimator.load(),
+);
 
 final channelsProvider = FutureProvider<List<EuiccChannelInfo>>((ref) async {
   final bridge = ref.watch(euiccBridgeProvider);

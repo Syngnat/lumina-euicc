@@ -2,6 +2,7 @@ package top.syngnat.lumina.euicc
 
 import android.Manifest
 import android.app.AlarmManager
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -10,6 +11,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.media.AudioAttributes
+import android.media.RingtoneManager
 import android.os.Build
 import android.provider.Settings
 import android.util.Log
@@ -103,15 +106,18 @@ internal class ProfileReminderSupport(private val context: Context) {
     }
 
     private fun scheduleRecord(reminder: StoredProfileReminder): StoredProfileReminder {
+        ProfileReminderNotifier.ensureChannel(context)
         val exact = canScheduleExactAlarms()
         val alarmIntent = checkNotNull(
             alarmPendingIntent(reminder.id, PendingIntent.FLAG_UPDATE_CURRENT),
         ) { "Unable to create reminder alarm" }
         val scheduledExactly = if (exact) {
             try {
-                alarmManager.setExactAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
-                    reminder.triggerAtMillis,
+                alarmManager.setAlarmClock(
+                    AlarmManager.AlarmClockInfo(
+                        reminder.triggerAtMillis,
+                        profileReminderContentIntent(context, reminder.notificationId),
+                    ),
                     alarmIntent,
                 )
                 true
@@ -214,6 +220,19 @@ internal class ProfileReminderSupport(private val context: Context) {
     }
 }
 
+private val StoredProfileReminder.notificationId: Int
+    get() = id.substring(0, 8).toLong(16).toInt()
+
+private fun profileReminderContentIntent(context: Context, requestCode: Int): PendingIntent =
+    PendingIntent.getActivity(
+        context,
+        requestCode,
+        Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        },
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+    )
+
 class ProfileReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != ProfileReminderSupport.ACTION_DELIVER) return
@@ -237,27 +256,39 @@ class ProfileReminderRestoreReceiver : BroadcastReceiver() {
 }
 
 private object ProfileReminderNotifier {
-    private const val CHANNEL_ID = "profile_reminders"
+    // Notification-channel behavior is immutable after first creation. A new ID
+    // upgrades existing installs from the old silent reminder channel.
+    private const val CHANNEL_ID = "profile_reminder_alarms_v2"
+    private val VIBRATION_PATTERN = longArrayOf(0, 700, 250, 700, 250, 1000)
+
+    fun ensureChannel(context: Context) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val manager = context.getSystemService(NotificationManager::class.java)
+        val alarmSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+        val audioAttributes = AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_ALARM)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .build()
+        manager.createNotificationChannel(
+            NotificationChannel(
+                CHANNEL_ID,
+                context.getString(R.string.profile_reminder_channel_name),
+                NotificationManager.IMPORTANCE_HIGH,
+            ).apply {
+                description = context.getString(R.string.profile_reminder_channel_description)
+                setSound(alarmSound, audioAttributes)
+                enableVibration(true)
+                vibrationPattern = VIBRATION_PATTERN
+                lockscreenVisibility = Notification.VISIBILITY_PRIVATE
+            },
+        )
+    }
 
     fun show(context: Context, reminder: StoredProfileReminder): Boolean = try {
         val manager = context.getSystemService(NotificationManager::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            manager.createNotificationChannel(
-                NotificationChannel(
-                    CHANNEL_ID,
-                    context.getString(R.string.profile_reminder_channel_name),
-                    NotificationManager.IMPORTANCE_HIGH,
-                ),
-            )
-        }
-        val contentIntent = PendingIntent.getActivity(
-            context,
-            0,
-            Intent(context, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            },
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
+        ensureChannel(context)
+        val contentIntent = profileReminderContentIntent(context, reminder.notificationId)
         val body = context.getString(
             R.string.profile_reminder_notification_body,
             reminder.profileName,
@@ -269,9 +300,10 @@ private object ProfileReminderNotifier {
             .setStyle(android.app.Notification.BigTextStyle().bigText(body))
             .setContentIntent(contentIntent)
             .setAutoCancel(true)
-            .setCategory(android.app.Notification.CATEGORY_REMINDER)
+            .setCategory(Notification.CATEGORY_ALARM)
+            .setVisibility(Notification.VISIBILITY_PRIVATE)
             .build()
-        manager.notify(reminder.id.substring(0, 8).toLong(16).toInt(), notification)
+        manager.notify(reminder.notificationId, notification)
         true
     } catch (error: Exception) {
         Log.w(

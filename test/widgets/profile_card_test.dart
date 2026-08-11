@@ -99,6 +99,7 @@ void main() {
         seq: 3,
       ),
       locale: const Locale('zh'),
+      estimatedSizeBytes: 25762,
     );
 
     final badge = tester.widget<SizedBox>(
@@ -112,7 +113,8 @@ void main() {
     expect(find.text('giffgaff'), findsOneWidget);
     expect(find.text('已启用'), findsOneWidget);
     expect(find.text('8944101••••••0123'), findsOneWidget);
-    expect(find.text('大小未知'), findsOneWidget);
+    expect(find.text('约 25.2 KiB'), findsOneWidget);
+    expect(find.text('大小未知'), findsNothing);
     expect(
       tester
           .getSemantics(find.byKey(const ValueKey('profile-region-badge')))
@@ -380,6 +382,7 @@ Future<void> _pumpCard(
   ProfileReminder? reminder,
   VoidCallback? onCancelReminder,
   VoidCallback? onMicroDataKeepAlive,
+  int? estimatedSizeBytes,
   Size surfaceSize = const Size(360, 800),
   TextScaler textScaler = TextScaler.noScaling,
 }) async {
@@ -408,6 +411,7 @@ Future<void> _pumpCard(
             reminder: reminder,
             onCancelReminder: onCancelReminder,
             onMicroDataKeepAlive: onMicroDataKeepAlive,
+            estimatedSizeBytes: estimatedSizeBytes,
           ),
         ),
       ),

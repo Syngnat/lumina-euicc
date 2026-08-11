@@ -5,9 +5,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lumina_euicc/models/euicc_models.dart';
+import 'package:lumina_euicc/models/profile_reminder.dart';
 import 'package:lumina_euicc/pages/download_page.dart';
 import 'package:lumina_euicc/pages/home_page.dart';
 import 'package:lumina_euicc/services/providers.dart';
+import 'package:lumina_euicc/services/profile_size_estimator.dart';
 
 import '../support/fake_euicc_bridge.dart';
 
@@ -240,9 +242,44 @@ void main() {
     expect(find.text('154.53 KiB free'), findsOneWidget);
     expect(find.text('Profiles'), findsOneWidget);
     expect(find.text('🇬🇧'), findsOneWidget);
-    expect(find.text('Size unknown'), findsOneWidget);
+    expect(find.textContaining('Est. '), findsOneWidget);
+    expect(find.text('Size unknown'), findsNothing);
     expect(find.byType(FloatingActionButton), findsNothing);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the dashboard bell opens local keep-alive reminders',
+      (tester) async {
+    const channel = EuiccChannelInfo(
+      slotId: 0,
+      portId: 0,
+      seId: '0',
+      label: 'Phone slot 0',
+      type: 'omapi',
+    );
+    final bridge = FakeEuiccBridge()
+      ..channels = const [channel]
+      ..profiles = const [_profile]
+      ..notifications = const [
+        {'title': 'Operation log', 'detail': 'Enable'}
+      ]
+      ..reminders[_profile.iccid] = ProfileReminder(
+        at: DateTime(2027, 6, 2, 9, 30),
+        exact: true,
+        notificationPermissionGranted: true,
+        exactAlarmPermissionGranted: true,
+      );
+    addTearDown(bridge.dispose);
+
+    await _pumpHome(tester, bridge);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('keepAliveRemindersButton')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Keep-alive reminders'), findsOneWidget);
+    expect(find.text('giffgaff'), findsWidgets);
+    expect(find.text('Operation log'), findsNothing);
+    expect(bridge.listNotificationsCalls, 0);
   });
 
   testWidgets('direct profile toggle is single-flight and targets the channel',
@@ -317,7 +354,7 @@ void main() {
     expect(bridge.scheduleReminderCalls, 1);
     expect(
         bridge.reminders[_profile.iccid]?.at.isAfter(DateTime.now()), isTrue);
-    expect(find.text('Keep-alive reminder saved'), findsOneWidget);
+    expect(find.text('Keep-alive alarm scheduled'), findsOneWidget);
   });
 
   testWidgets(
@@ -558,7 +595,15 @@ const _profile = EuiccProfile(
 Future<void> _pumpHome(WidgetTester tester, FakeEuiccBridge bridge) =>
     tester.pumpWidget(
       ProviderScope(
-        overrides: [euiccBridgeProvider.overrideWithValue(bridge)],
+        overrides: [
+          euiccBridgeProvider.overrideWithValue(bridge),
+          profileSizeEstimatorProvider.overrideWith(
+            (ref) async => ProfileSizeEstimator.fromJson(
+              '{"offset":{"89086030":12168},'
+              '"providers":{"giffgaff":13594}}',
+            ),
+          ),
+        ],
         child: const MaterialApp(home: HomePage()),
       ),
     );

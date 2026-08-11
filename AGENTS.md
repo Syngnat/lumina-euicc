@@ -74,12 +74,12 @@ OMAPI (removable eUICC)  or  USB CCID reader
 | List profiles | UI/bridge path implemented; one exact, model-unknown 9eSIM-card/device combination listed real profiles with `0.1.1` |
 | Enable / disable profile | UI/bridge path implemented; hardware validation pending |
 | Delete / rename profile | UI/bridge path implemented; hardware validation pending |
-| Keep-alive reminders | Per-profile local Android alarm/notification path implemented with reboot/app-update recovery; no plaintext ICCID is persisted and no reminder data is written to the eUICC |
+| Keep-alive reminders | Per-profile local Android AlarmClock path with alarm-sound/vibration channel, inexact fallback, and reboot/app-update recovery; no plaintext ICCID is persisted and no reminder data is written to the eUICC |
 | One-tap micro-data check | Foreground-only OMAPI path temporarily switches the target profile, requests its exact Android cellular subscription, performs one bodyless HTTPS request, releases the app-scoped network request, and restores the prior profile; it does not control global data, cannot bound carrier-billed bytes, and has no real-card validation |
 | Download via LPA activation code / QR | UI/bridge path, progress events, and confirmation implemented; hardware validation pending |
 | Compatibility check | UI/bridge path implemented |
 | STK management | Settings can open the system SIM Toolkit/card-side LPAe menu; it is an external UI only and does not authorize or return profile data to Lumina |
-| Notifications | Listing is exposed in Flutter; process/delete have native handlers but no Dart API or UI actions |
+| Reminder center / eUICC reports | Home bell lists local keep-alive reminders; Settings separately labels card-side pending reports; process/delete have native handlers but no Dart API or UI actions |
 | Memory reset | UI/bridge path implemented; destructive hardware path not validated |
 | Online update | Settings UI and Dart/Kotlin path accept only the official immutable GitHub Release, preserve the installed APK ABI family, verify SHA-256/package/newer-version/exact signer set, and launch the user-confirmed Android installer |
 | eUICC info (EID, etc.) | Dart/native API implemented; no dedicated Flutter presentation or hardware validation |

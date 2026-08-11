@@ -142,6 +142,14 @@ subject to preserving its copyright and permission notice. This notice preserves
 that attribution. Use of these public community identities does not imply
 endorsement by, or affiliation with, NekokoLPA, Sakura, ShiinaSekiu, or 9eSIM.
 
+`assets/data/profile_size_estimates.json` is a normalized, provider-level
+derivative of the observed profile-size samples and eUICC-family offsets in
+NekokoLPA's pinned
+[`src/data/sizes.json`](https://github.com/iebb/NekokoLPA/blob/517f88f9391099c8744a2f04df30c8d4a9cdd3d9/src/data/sizes.json).
+Lumina labels every value derived from that data as an estimate. The eUICC
+profile-list API does not report per-profile storage usage, so this data must
+not be interpreted as a card measurement or billing value.
+
 Only public certificates and signatures are present in an APK. Keystores,
 private keys, and passwords are build-time material and are excluded from the
 Lumina repository, source archives, CI audit bundle, persistent

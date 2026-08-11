@@ -29,6 +29,9 @@ particular:
   remains in the source archive under its own terms even when it is not part of
   the APK.
 - cJSON and dlfcn-win32 retain their MIT licenses.
+- `assets/data/profile_size_estimates.json` is a normalized derivative of the
+  pinned NekokoLPA profile-size sample data and retains the upstream MIT notice
+  recorded in `THIRD_PARTY_NOTICES.md`.
 - Registry dependencies from Flutter/Dart and Android/Gradle retain their own
   licenses. Their exact resolved versions are determined by `pubspec.lock`,
   the Gradle build files, and the dependency inventories produced by the same

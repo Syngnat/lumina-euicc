@@ -17,13 +17,13 @@
 | API | 说明 |
 |---|---|
 | `getProfileReminder` | 按 Profile 查询本机保存的提醒；ICCID 仅用于生成 SHA-256 本地键，不保存明文 |
-| `scheduleProfileReminder` | 保存日期时间并交给 Android `AlarmManager`；不向 eUICC 写入任何数据 |
+| `scheduleProfileReminder` | 保存日期时间并交给 Android `AlarmClock`/`AlarmManager`；使用独立闹钟铃声与震动通道，不向 eUICC 写入任何数据 |
 | `cancelProfileReminder` | 取消系统闹钟并删除本机提醒 |
 | `renameProfileReminder` | Profile 改名后同步本地通知名称 |
 | `requestReminderNotificationPermission` | Android 13+ 请求通知权限 |
 | `openExactAlarmSettings` | Android 12+ 打开“闹钟和提醒”特殊权限页；未授权时仍安排可能延迟的非精确提醒 |
 
-提醒通过系统通知触发，应用重启、手机重启和应用升级后会恢复调度。它与下文的 eUICC 待处理通知不是同一类数据。
+提醒通过系统闹钟级通知触发，应用重启、手机重启和应用升级后会恢复调度；声音与震动仍服从用户的 Android/ColorOS 通知通道设置。首页铃铛只展示这些本地提醒，它与下文的 eUICC 待上报事件不是同一类数据。
 
 ## 微流量联网检查
 
@@ -38,6 +38,8 @@
 自动化测试证据，尚无真实卡/运营商保号验证。
 
 Profile 卡片为紧凑两行展示。国旗优先来自明确的运营商/品牌身份；元数据不足时，只对无歧义的 ITU E.118 ICCID 国家码显示“发卡地区”。它不代表实际服务国家或漫游范围，共享/全球/无效码保持未知。
+
+`GetProfilesInfo` 不返回单个配置的精确占用大小。Lumina 仅在固定公开样本能够匹配运营商与 EID 芯片族时显示“约 xx KiB”，否则隐藏大小字段；该值不是卡片测量值。
 
 ## 下载
 
@@ -57,11 +59,11 @@ Profile 卡片为紧凑两行展示。国旗优先来自明确的运营商/品�
 | `memoryReset` | 危险操作，需二次确认 |
 | `openSimToolkit` | 打开系统 SIM 卡工具包 / 卡内 LPAe 菜单；不授予 Lumina OMAPI/ARA-M 权限，也不返回卡内菜单数据 |
 
-## 通知
+## eUICC 待上报事件
 
 | API | 当前暴露范围 |
 |---|---|
-| `listNotifications` | Kotlin、Dart API 与 Flutter 列表 UI 均已接线 |
+| `listNotifications` | Kotlin、Dart API 与设置页“eUICC 待上报事件”列表均已接线；不属于首页保号提醒中心 |
 | `processNotification` | 仅 Kotlin handler；尚无 Dart API / Flutter 操作 |
 | `deleteNotification` | 仅 Kotlin handler；尚无 Dart API / Flutter 操作 |
 

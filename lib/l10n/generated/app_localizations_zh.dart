@@ -99,7 +99,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get freeMemoryUnknown => '可用空间未知';
 
   @override
-  String get profileSizeUnknown => '大小未知';
+  String profileSizeEstimate(String size) {
+    return '约 $size';
+  }
 
   @override
   String get reminderUnset => '未设置提醒';
@@ -405,16 +407,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get memoryResetRequested => '已请求重置存储';
 
   @override
-  String get notifications => '通知';
+  String get euiccPendingReports => 'eUICC 待上报事件';
 
   @override
-  String get notificationsDescription => '查看待处理的 eUICC 通知';
+  String get euiccPendingReportsDescription =>
+      '配置安装、启用、停用或删除后，卡片等待上报给服务端的技术事件；不是保号提醒或提醒历史。';
 
   @override
-  String get noPendingNotifications => '暂无待处理通知';
+  String get noPendingEuiccReports => '暂无等待上报的卡片事件';
 
   @override
-  String get notification => '通知';
+  String get euiccPendingReport => 'eUICC 待上报事件';
 
   @override
   String compatibilityError(String error) {
@@ -633,6 +636,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get keepAliveReminder => '保号提醒';
 
   @override
+  String get keepAliveReminderCenterTitle => '保号提醒';
+
+  @override
+  String get noKeepAliveReminders => '当前通道暂无保号提醒';
+
+  @override
   String get editKeepAliveReminder => '修改提醒';
 
   @override
@@ -653,7 +662,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get reminderMustBeFuture => '请选择未来的日期和时间。';
 
   @override
-  String get reminderSaved => '已保存保号提醒';
+  String get reminderSaved => '保号闹钟已设置';
 
   @override
   String get reminderCancelled => '已取消保号提醒';

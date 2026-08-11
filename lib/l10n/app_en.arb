@@ -37,7 +37,10 @@
     "placeholders": {"size": {"type": "String"}}
   },
   "freeMemoryUnknown": "Free space unknown",
-  "profileSizeUnknown": "Size unknown",
+  "profileSizeEstimate": "Est. {size}",
+  "@profileSizeEstimate": {
+    "placeholders": {"size": {"type": "String"}}
+  },
   "reminderUnset": "No reminder",
   "reminderExpired": "Expired",
   "reminderDaysRemaining": "{days}d",
@@ -161,10 +164,10 @@
   "memoryResetConfirmation": "This may delete profiles on the eUICC. Continue only if you know what you are doing.",
   "reset": "Reset",
   "memoryResetRequested": "Memory reset requested",
-  "notifications": "Notifications",
-  "notificationsDescription": "List pending eUICC notifications",
-  "noPendingNotifications": "No pending notifications",
-  "notification": "Notification",
+  "euiccPendingReports": "eUICC pending reports",
+  "euiccPendingReportsDescription": "Technical card-side events waiting to be reported after profile operations; these are not keep-alive reminders or reminder history.",
+  "noPendingEuiccReports": "No card-side events are waiting to be reported",
+  "euiccPendingReport": "Pending eUICC report",
   "compatibilityError": "Error: {error}",
   "@compatibilityError": {
     "placeholders": {"error": {"type": "String"}}
@@ -297,6 +300,8 @@
   "updateInstallFailed": "Android could not verify or open this update. The installed app was not changed.",
   "updateInstallerLaunched": "The verified APK was handed to Android's system installer. Confirm the update there.",
   "keepAliveReminder": "Keep-alive reminder",
+  "keepAliveReminderCenterTitle": "Keep-alive reminders",
+  "noKeepAliveReminders": "No keep-alive reminders for this channel",
   "editKeepAliveReminder": "Edit reminder",
   "cancelReminder": "Cancel reminder",
   "reminderScheduledAt": "Keep-alive reminder set for {date} at {time}",
@@ -309,7 +314,7 @@
   "selectReminderDate": "Select keep-alive date",
   "selectReminderTime": "Select reminder time",
   "reminderMustBeFuture": "Choose a future date and time.",
-  "reminderSaved": "Keep-alive reminder saved",
+  "reminderSaved": "Keep-alive alarm scheduled",
   "reminderCancelled": "Keep-alive reminder cancelled",
   "reminderScheduleFailed": "The keep-alive reminder could not be updated.",
   "reminderNotificationsDeniedTitle": "Notifications are disabled",

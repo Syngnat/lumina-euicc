@@ -20,6 +20,7 @@ class FakeEuiccBridge extends EuiccBridge {
   int openSimToolkitCalls = 0;
   int scheduleReminderCalls = 0;
   int cancelReminderCalls = 0;
+  int listNotificationsCalls = 0;
   int requestPhoneStatePermissionCalls = 0;
   int microDataKeepAliveCalls = 0;
   int switchProfileCalls = 0;
@@ -46,6 +47,7 @@ class FakeEuiccBridge extends EuiccBridge {
   })? lastProfileSwitch;
   ({int slotId, int portId, String seId})? lastMicroDataChannel;
   final Map<String, ProfileReminder> reminders = {};
+  List<Map<String, dynamic>> notifications = const [];
   bool openSimToolkitResult = true;
   Object? openSimToolkitError;
   String? scanQrResult;
@@ -128,6 +130,16 @@ class FakeEuiccBridge extends EuiccBridge {
 
   @override
   Future<void> openExactAlarmSettings() async {}
+
+  @override
+  Future<List<Map<String, dynamic>>> listNotifications({
+    required int slotId,
+    required int portId,
+    required String seId,
+  }) async {
+    listNotificationsCalls++;
+    return notifications;
+  }
 
   @override
   Future<bool> requestPhoneStatePermission() async {
