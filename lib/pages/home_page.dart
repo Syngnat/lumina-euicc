@@ -246,9 +246,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   Future<void> _refresh() async {
-    ref.invalidate(channelsProvider);
-    ref.invalidate(profilesProvider);
-    ref.invalidate(euiccInfoProvider);
+    refreshEuiccData(ref);
     try {
       await ref.read(profilesProvider.future);
     } catch (_) {
@@ -359,9 +357,7 @@ class _HomePageState extends ConsumerState<HomePage> {
           );
       }
     } finally {
-      ref.invalidate(channelsProvider);
-      ref.invalidate(profilesProvider);
-      ref.invalidate(euiccInfoProvider);
+      refreshEuiccData(ref);
       if (mounted) setState(() => _switchingIccid = null);
     }
   }

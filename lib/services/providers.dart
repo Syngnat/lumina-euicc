@@ -91,3 +91,12 @@ EuiccChannelInfo? _currentChannel(
   }
   return channels.first;
 }
+
+/// Invalidates the channel / profile / eUICC-info providers after a state-
+/// changing operation so dependent UI refetches. Safe to call anywhere a
+/// [WidgetRef] is available.
+void refreshEuiccData(WidgetRef ref) {
+  ref.invalidate(channelsProvider);
+  ref.invalidate(profilesProvider);
+  ref.invalidate(euiccInfoProvider);
+}
