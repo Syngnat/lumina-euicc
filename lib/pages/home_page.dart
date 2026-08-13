@@ -6,7 +6,13 @@ import '../l10n/l10n.dart';
 import '../models/euicc_models.dart';
 import '../models/profile_reminder.dart';
 import '../services/providers.dart';
+import '../widgets/channel_switcher.dart';
+import '../widgets/dashboard_header.dart';
+import '../widgets/empty_card.dart';
+import '../widgets/euicc_identity_strip.dart';
+import '../widgets/micro_data_dialog.dart';
 import '../widgets/profile_card.dart';
+import '../widgets/profiles_section_header.dart';
 import 'compatibility_page.dart';
 import 'download_page.dart';
 import 'settings_page.dart';
@@ -43,7 +49,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
                   child: Column(
                     children: [
-                      _DashboardHeader(
+                      DashboardHeader(
                         onCompatibility: () => Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => const CompatibilityPage(),
@@ -60,7 +66,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                       channelsAsync.when(
                         data: (channels) => channels.isEmpty
                             ? const SizedBox.shrink()
-                            : _ChannelSwitcher(
+                            : ChannelSwitcher(
                                 channels: channels,
                                 selected: selected,
                                 selectedProfileCount: profileCount,
@@ -76,7 +82,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                         error: (_, __) => const SizedBox.shrink(),
                       ),
                       const SizedBox(height: 10),
-                      _EuiccIdentityStrip(
+                      EuiccIdentityStrip(
                         info: euiccInfoAsync.valueOrNull,
                         infoLoading: euiccInfoAsync.isLoading,
                         onReminders: selected == null
@@ -91,7 +97,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                       ),
                       if (selected != null) ...[
                         const SizedBox(height: 11),
-                        _ProfilesSectionHeader(count: profileCount),
+                        ProfilesSectionHeader(count: profileCount),
                         const SizedBox(height: 7),
                       ],
                     ],
@@ -103,7 +109,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   hasScrollBody: false,
                   child: Padding(
                     padding: const EdgeInsets.all(24),
-                    child: _EmptyCard(
+                    child: EmptyCard(
                       icon: '📶',
                       title: context.l10n.noEuiccFound,
                       body: context.l10n.noEuiccFoundDescription,
@@ -126,7 +132,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                         hasScrollBody: false,
                         child: Padding(
                           padding: const EdgeInsets.all(24),
-                          child: _EmptyCard(
+                          child: EmptyCard(
                             icon: '📭',
                             title: context.l10n.noProfilesYet,
                             body: context.l10n.noProfilesDescription,
@@ -216,7 +222,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                     hasScrollBody: false,
                     child: Padding(
                       padding: const EdgeInsets.all(24),
-                      child: _EmptyCard(
+                      child: EmptyCard(
                         icon: '🔄',
                         title: error is PlatformException &&
                                 error.code == 'euicc_channel_unavailable'
@@ -485,7 +491,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       final outcome = await showDialog<Object?>(
         context: context,
         barrierDismissible: false,
-        builder: (_) => _MicroDataProgressDialog(
+        builder: (_) => MicroDataProgressDialog(
           operation: () => bridge.runMicroDataKeepAlive(
             slotId: channel.slotId,
             portId: channel.portId,
@@ -823,547 +829,5 @@ class _HomePageState extends ConsumerState<HomePage> {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
-  }
-}
-
-class _DashboardHeader extends StatelessWidget {
-  const _DashboardHeader({
-    required this.onCompatibility,
-    required this.onRefresh,
-    required this.onSettings,
-  });
-
-  final VoidCallback onCompatibility;
-  final Future<void> Function() onRefresh;
-  final VoidCallback onSettings;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return SizedBox(
-      height: 48,
-      child: Row(
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: const Color(0xFF173F3A),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.sim_card_outlined,
-              color: Colors.white,
-              size: 22,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  context.l10n.appTitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.45,
-                        height: 1.05,
-                      ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  context.l10n.dashboardSubtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
-              ],
-            ),
-          ),
-          _HeaderAction(
-            tooltip: context.l10n.compatibility,
-            icon: Icons.verified_user_outlined,
-            onPressed: onCompatibility,
-          ),
-          _HeaderAction(
-            tooltip: context.l10n.refresh,
-            icon: Icons.refresh_rounded,
-            onPressed: onRefresh,
-          ),
-          _HeaderAction(
-            tooltip: context.l10n.settings,
-            icon: Icons.settings_outlined,
-            onPressed: onSettings,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HeaderAction extends StatelessWidget {
-  const _HeaderAction({
-    required this.tooltip,
-    required this.icon,
-    required this.onPressed,
-  });
-
-  final String tooltip;
-  final IconData icon;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) => IconButton(
-        tooltip: tooltip,
-        padding: EdgeInsets.zero,
-        constraints: const BoxConstraints.tightFor(width: 38, height: 38),
-        visualDensity: VisualDensity.compact,
-        onPressed: onPressed,
-        icon: Icon(icon, size: 22),
-      );
-}
-
-class _ChannelSwitcher extends StatelessWidget {
-  const _ChannelSwitcher({
-    required this.channels,
-    required this.selected,
-    required this.selectedProfileCount,
-    required this.onSelected,
-  });
-
-  final List<EuiccChannelInfo> channels;
-  final EuiccChannelInfo? selected;
-  final int selectedProfileCount;
-  final ValueChanged<EuiccChannelInfo> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final items = [
-      for (final channel in channels)
-        _ChannelSegment(
-          key: ValueKey(
-            'channel-segment-${channel.slotId}-${channel.portId}-${channel.seId}',
-          ),
-          channel: channel,
-          selected: channel.key == selected?.key,
-          detail: channel.key == selected?.key
-              ? context.l10n.profileCount(selectedProfileCount)
-              : channel.type.toUpperCase(),
-          onTap: () => onSelected(channel),
-        ),
-    ];
-
-    return Container(
-      height: 45,
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: channels.length <= 2
-          ? Row(
-              children: [for (final item in items) Expanded(child: item)],
-            )
-          : ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: items.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 4),
-              itemBuilder: (_, index) => SizedBox(
-                width: 150,
-                child: items[index],
-              ),
-            ),
-    );
-  }
-}
-
-class _ChannelSegment extends StatelessWidget {
-  const _ChannelSegment({
-    super.key,
-    required this.channel,
-    required this.selected,
-    required this.detail,
-    required this.onTap,
-  });
-
-  final EuiccChannelInfo channel;
-  final bool selected;
-  final String detail;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final isUsb = channel.type.toLowerCase() == 'usb';
-    final label = isUsb ? 'USB' : 'SIM ${channel.slotId + 1}';
-    return Semantics(
-      label: context.l10n.euiccChannelLabel(channel),
-      selected: selected,
-      button: true,
-      child: Material(
-        color: selected ? scheme.surface : Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
-        elevation: selected ? 1 : 0,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: onTap,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                isUsb ? Icons.usb_rounded : Icons.sim_card_outlined,
-                size: 16,
-                color: selected ? scheme.primary : scheme.onSurfaceVariant,
-              ),
-              const SizedBox(width: 5),
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color:
-                            selected ? scheme.primary : scheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w800,
-                      ),
-                ),
-              ),
-              const SizedBox(width: 5),
-              Flexible(
-                child: Text(
-                  detail,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _EuiccIdentityStrip extends StatelessWidget {
-  const _EuiccIdentityStrip({
-    required this.info,
-    required this.infoLoading,
-    required this.onReminders,
-    required this.onAdd,
-  });
-
-  final EuiccInfo? info;
-  final bool infoLoading;
-  final VoidCallback? onReminders;
-  final VoidCallback onAdd;
-
-  @override
-  Widget build(BuildContext context) {
-    final eid = info?.eid.trim() ?? '';
-    final freeMemory = info?.freeNonVolatileMemory ?? 0;
-    final eidLabel = eid.isEmpty ? context.l10n.eidUnavailable : _maskEid(eid);
-    final memoryLabel = freeMemory > 0
-        ? context.l10n.freeMemory(_formatStorage(freeMemory))
-        : context.l10n.freeMemoryUnknown;
-
-    return SizedBox(
-      height: 73,
-      child: Row(
-        children: [
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(13, 9, 12, 9),
-              decoration: BoxDecoration(
-                color: const Color(0xFF173F3A),
-                borderRadius: BorderRadius.circular(17),
-              ),
-              child: infoLoading
-                  ? const Center(
-                      child: SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Color(0xFF8FD8CC),
-                        ),
-                      ),
-                    )
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.fingerprint_rounded,
-                              color: Color(0xFF8FD8CC),
-                              size: 17,
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                eidLabel,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .labelMedium
-                                    ?.copyWith(
-                                      color: Colors.white,
-                                      fontFamily: 'monospace',
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 7),
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.storage_rounded,
-                              color: Color(0xFF8FD8CC),
-                              size: 16,
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                memoryLabel,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .labelSmall
-                                    ?.copyWith(
-                                      color: const Color(0xFFD7ECE8),
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          _DashboardSquareAction(
-            key: const Key('keepAliveRemindersButton'),
-            tooltip: context.l10n.localReminders,
-            icon: Icons.notifications_none_rounded,
-            onPressed: onReminders,
-          ),
-          const SizedBox(width: 8),
-          _DashboardSquareAction(
-            key: const Key('newEsimButton'),
-            tooltip: context.l10n.newEsim,
-            icon: Icons.add_rounded,
-            emphasized: true,
-            onPressed: onAdd,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DashboardSquareAction extends StatelessWidget {
-  const _DashboardSquareAction({
-    super.key,
-    required this.tooltip,
-    required this.icon,
-    required this.onPressed,
-    this.emphasized = false,
-  });
-
-  final String tooltip;
-  final IconData icon;
-  final VoidCallback? onPressed;
-  final bool emphasized;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Material(
-      color: emphasized ? scheme.primary : scheme.surfaceContainerLowest,
-      borderRadius: BorderRadius.circular(17),
-      elevation: emphasized ? 1 : 0,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(17),
-        onTap: onPressed,
-        child: Tooltip(
-          message: tooltip,
-          child: SizedBox(
-            width: 54,
-            height: 73,
-            child: Icon(
-              icon,
-              color: emphasized ? scheme.onPrimary : scheme.onSurface,
-              size: 25,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ProfilesSectionHeader extends StatelessWidget {
-  const _ProfilesSectionHeader({required this.count});
-
-  final int count;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Row(
-      children: [
-        Text(
-          context.l10n.profilesSectionTitle,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.2,
-              ),
-        ),
-        const SizedBox(width: 7),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-          decoration: BoxDecoration(
-            color: scheme.primaryContainer,
-            borderRadius: BorderRadius.circular(999),
-          ),
-          child: Text(
-            '$count',
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: scheme.primary,
-                  fontWeight: FontWeight.w800,
-                ),
-          ),
-        ),
-        const Spacer(),
-        Icon(Icons.alarm_outlined, size: 15, color: scheme.onSurfaceVariant),
-        const SizedBox(width: 4),
-        Text(
-          context.l10n.localReminders,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: scheme.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
-              ),
-        ),
-      ],
-    );
-  }
-}
-
-String _maskEid(String eid) {
-  if (eid.length <= 12) return eid;
-  return '${eid.substring(0, 8)}••••••${eid.substring(eid.length - 6)}';
-}
-
-String _formatStorage(int bytes) {
-  if (bytes >= 1024) return '${(bytes / 1024).toStringAsFixed(2)} KiB';
-  return '$bytes B';
-}
-
-class _MicroDataProgressDialog extends StatefulWidget {
-  const _MicroDataProgressDialog({required this.operation});
-
-  final Future<MicroDataKeepAliveResult> Function() operation;
-
-  @override
-  State<_MicroDataProgressDialog> createState() =>
-      _MicroDataProgressDialogState();
-}
-
-class _MicroDataProgressDialogState extends State<_MicroDataProgressDialog> {
-  @override
-  void initState() {
-    super.initState();
-    _run();
-  }
-
-  Future<void> _run() async {
-    Object? outcome;
-    try {
-      outcome = await widget.operation();
-    } on Exception catch (error) {
-      outcome = error;
-    }
-    if (mounted) Navigator.of(context).pop(outcome);
-  }
-
-  @override
-  Widget build(BuildContext context) => PopScope(
-        canPop: false,
-        child: AlertDialog(
-          title: Text(context.l10n.microDataKeepAliveRunningTitle),
-          content: Row(
-            children: [
-              const CircularProgressIndicator(),
-              const SizedBox(width: 20),
-              Expanded(
-                child: Text(
-                  context.l10n.microDataKeepAliveRunningDescription,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-}
-
-class _EmptyCard extends StatelessWidget {
-  const _EmptyCard({
-    required this.icon,
-    required this.title,
-    required this.body,
-    required this.actionLabel,
-    this.onAction,
-  });
-
-  final String icon;
-  final String title;
-  final String body;
-  final String actionLabel;
-  final VoidCallback? onAction;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(icon, style: const TextStyle(fontSize: 36)),
-            const SizedBox(height: 12),
-            Text(title, style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            Text(
-              body,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-            ),
-            if (onAction != null) ...[
-              const SizedBox(height: 16),
-              FilledButton.tonal(onPressed: onAction, child: Text(actionLabel)),
-            ],
-          ],
-        ),
-      ),
-    );
   }
 }
