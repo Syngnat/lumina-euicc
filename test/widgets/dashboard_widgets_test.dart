@@ -67,9 +67,18 @@ void main() {
       );
 
       expect(find.text('SIM 1'), findsOneWidget);
-      expect(find.text('USB'), findsOneWidget);
+      final usbSegment = find.byKey(
+        const ValueKey('channel-segment-1-0-se1'),
+      );
+      expect(usbSegment, findsOneWidget);
+      expect(
+        find.descendant(of: usbSegment, matching: find.text('USB')),
+        findsWidgets,
+      );
 
-      await tester.tap(find.text('USB'));
+      await tester.tap(
+        find.descendant(of: usbSegment, matching: find.byType(InkWell)),
+      );
       await tester.pumpAndSettle();
       expect(selected?.slotId, 1);
       expect(tester.takeException(), isNull);
